@@ -458,6 +458,7 @@
         </div>
         <div id="category-list" class="category-list"></div>
         <a class="sidebar-button" href="notes.html">Excel Notlarını Düzenle</a>
+        <a class="sidebar-button" href="preview.html">Göndereceklerimi Önizle</a>
       </aside>
       <main class="main-content">
         <header class="header">
@@ -469,10 +470,13 @@
             <input id="search" class="search" type="search" placeholder="Site ara..." aria-label="Site ara" />
             <div id="site-count">0 site görüntüleniyor</div>
           </div>
-          <div class="quick-filters" id="quick-filters">
-            <button type="button" class="quick-filter button-outline" data-category="Tümü">Tümü</button>
-            <button type="button" class="quick-filter button-outline" data-category="Sık Kullanılanlar">Sık Kullanılanlar</button>
-            <button type="button" class="quick-filter button-outline" data-category="Her Zaman Açılacaklar">Her Zaman Açılacaklar</button>
+          <div class="controls">
+            <div class="quick-filters" id="quick-filters">
+              <button type="button" class="quick-filter button-outline" data-category="Tümü">Tümü</button>
+              <button type="button" class="quick-filter button-outline" data-category="Sık Kullanılanlar">Sık Kullanılanlar</button>
+              <button type="button" class="quick-filter button-outline" data-category="Her Zaman Açılacaklar">Her Zaman Açılacaklar</button>
+            </div>
+            <button id="open-alwaysopen" type="button" class="button button-secondary" style="display:none;">Tüm Her Zaman Açılacakları Aç</button>
           </div>
         </header>
 
@@ -509,9 +513,10 @@
     const previewTitle = document.getElementById('preview-title');
     const previewNote = document.getElementById('preview-note');
     const previewFrame = document.getElementById('preview-frame');
+    const openAlwaysOpenButton = document.getElementById('open-alwaysopen');
 
-    // If you want to use a public Google Sheet instead of local data.json,
-    // set the sheet ID below in config.js and optionally the sheet name.
+    // Site verisi yalnızca Google Sheet üzerinden yüklenir.
+    // `config.js` içindeki googleSheetId alanını doldurun.
     const siteConfig = window.siteConfig || {};
     const googleSheetId = siteConfig.googleSheetId || '';
     const googleSheetTab = siteConfig.googleSheetTab || '';
@@ -519,8 +524,6 @@
     let sites = [];
     let filteredSites = [];
     let selectedCategory = 'Tümü';
-    let manualCategories = [];
-    let categoriesLoaded = false;
     let sitesLoaded = false;
 
     function updateCounts() {
@@ -540,21 +543,6 @@
       if (category === 'Sık Kullanılanlar') return sites.filter(site => site.favorite).length;
       if (category === 'Her Zaman Açılacaklar') return sites.filter(site => site.alwaysOpen).length;
       return sites.filter(site => (site.category || 'Diğer') === category).length;
-    }
-
-    function loadCategories() {
-      return fetch('categories.json')
-        .then(response => response.ok ? response.json() : Promise.reject())
-        .then(data => {
-          if (data && Array.isArray(data.categories)) manualCategories = data.categories;
-        })
-        .catch(() => {
-          manualCategories = [];
-        })
-        .finally(() => {
-          categoriesLoaded = true;
-          maybeInitialize();
-        });
     }
 
     function parseGoogleSheetData(text) {
@@ -602,7 +590,12 @@
     }
 
     function loadSites() {
-      const source = googleSheetId.trim() ? fetchSitesFromGoogleSheet() : fetch('data.json').then(response => response.json()).then(data => { sites = Array.isArray(data) ? data : []; });
+      const source = googleSheetId.trim()
+        ? fetchSitesFromGoogleSheet()
+        : Promise.resolve().then(() => {
+            sites = [];
+            loading.textContent = 'Google Sheet ID ayarlı değil. Lütfen config.js içinde googleSheetId ekleyin.';
+          });
       return source
         .catch(() => {
           loading.textContent = 'Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.';
@@ -616,9 +609,10 @@
     }
 
     function maybeInitialize() {
-      if (!categoriesLoaded || !sitesLoaded) return;
+      if (!sitesLoaded) return;
       populateCategoryList();
       renderSites(sites);
+      updateOpenAlwaysOpenButton();
     }
 
     function selectCategory(category) {
@@ -629,13 +623,12 @@
       document.querySelectorAll('.quick-filter').forEach(button => {
         button.classList.toggle('active', button.dataset.category === category);
       });
+      updateOpenAlwaysOpenButton();
       filterSitesAndRender();
     }
 
     function getSidebarCategories() {
-      return manualCategories.length
-        ? manualCategories.slice()
-        : Array.from(new Set(sites.map(site => site.category || 'Diğer'))).sort();
+      return Array.from(new Set(sites.map(site => site.category || 'Diğer'))).sort();
     }
 
     function populateCategoryList() {
@@ -657,6 +650,21 @@
       }
     }
 
+    function updateOpenAlwaysOpenButton() {
+      const alwaysOpenCount = sites.filter(site => site.alwaysOpen).length;
+      openAlwaysOpenButton.style.display = selectedCategory === 'Her Zaman Açılacaklar' && alwaysOpenCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    function openAllAlwaysOpen() {
+      const alwaysOpenSites = filterSites();
+      if (!alwaysOpenSites.length) {
+        return;
+      }
+      alwaysOpenSites.forEach(site => {
+        window.open(site.url, '_blank', 'noopener');
+      });
+    }
+
     function filterSites() {
       const query = searchInput.value.trim().toLowerCase();
       return sites.filter(site => {
@@ -670,7 +678,7 @@
             ? site.favorite
             : selectedCategory === 'Her Zaman Açılacaklar'
               ? site.alwaysOpen
-              : getSiteGroup(site) === selectedCategory;
+              : (site.category || 'Diğer') === selectedCategory;
         return matchesQuery && matchesCategory;
       });
     }
@@ -678,6 +686,7 @@
     function filterSitesAndRender() {
       const matched = filterSites();
       renderSites(matched);
+      updateOpenAlwaysOpenButton();
     }
 
     function getDomain(url) {
@@ -837,8 +846,8 @@
     searchInput.addEventListener('input', filterSitesAndRender);
 
     initializeQuickFilters();
+    openAlwaysOpenButton.addEventListener('click', openAllAlwaysOpen);
 
-    loadCategories();
     loadSites();
   </script>
 </body>
