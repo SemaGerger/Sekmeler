@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gönderi Detayı</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .header-card {
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      margin-bottom: 18px;
+    }
+    .header-card h1 {
+      margin: 0 0 10px;
+      font-size: 1.5rem;
+    }
+    .header-card p {
+      margin: 0;
+      color: #475569;
+      line-height: 1.7;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 11px 16px;
+      border-radius: 14px;
+      background: #0f172a;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.18s ease;
+    }
+    .button:hover {
+      background: #1f2937;
+    }
+    .copy-button {
+      background: #2563eb;
+    }
+    .copy-button:hover {
+      background: #1d4ed8;
+    }
+    .status {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.83);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      color: #0f172a;
+    }
+    .detail-card {
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+    }
+    .detail-header {
+      padding: 24px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+      background: #f8fafc;
+    }
+    .detail-header h2 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+    .detail-meta {
+      margin-top: 10px;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+    .detail-body {
+      padding: 24px;
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      margin-top: 24px;
+    }
+    .detail-body pre {
+      margin: 0;
+      background: #f1f5f9;
+      padding: 16px;
+      border-radius: 18px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.45;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+      color: #0f172a;
+    }
+    .detail-body p {
+      color: #334155;
+      line-height: 1.8;
+    }
+    .detail-media {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .detail-media img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 18px;
+      object-fit: contain;
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      padding: 12px;
+    }
+    .detail-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 18px 0 0;
+    }
+    .detail-field {
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    }
+    .detail-field h4 {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .detail-field p {
+      margin: 0;
+      color: #0f172a;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .preview-content {
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+      <div class="toolbar">
+        <a class="button" href="ulakbelForm.html">Geri Dön</a>
+        <div id="status" class="status" style="display:none;"></div>
+      </div>
+      <div id="detail" class="detail-card" style="display:none;"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    const detailContainer = document.getElementById('detail');
+    const siteConfig = window.siteConfig || {};
+    const googleSheetId = siteConfig.googleSheetId || '';
+    const googlePreviewTab = siteConfig.googlePreviewTab || '';
+
+    function setStatus(message, isError = false) {
+      if (!status) return;
+      status.textContent = message;
+      status.style.display = 'block';
+      status.style.color = isError ? '#b45309' : '#0f172a';
+      status.style.borderColor = isError ? 'rgba(245, 158, 11, 0.35)' : 'rgba(148, 163, 184, 0.18)';
+      status.style.background = isError ? 'rgba(254, 243, 199, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+    }
+
+    function parseGvizResponse(text) {
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!match) return null;
+      return JSON.parse(match[1]);
+    }
+
+    function normalizeValue(cell) {
+      if (!cell) return '';
+      if (cell.formattedValue !== undefined) return cell.formattedValue;
+      if (cell.v !== undefined) return cell.v;
+      return '';
+    }
+
+    function buildPreviewRows(data) {
+      let headers = data.table.cols.map(col => (col.label || col.id || '').trim());
+      const rows = data.table.rows.map(row => row.c.map(normalizeValue));
+      const isGenericColumnLabel = value => /^[A-Z]+$/i.test(value);
+      const needsHeaderFallback = headers.length > 0 && rows.length > 0 &&
+        (headers.every(header => !header) || headers.every(header => isGenericColumnLabel(header)));
+
+      if (needsHeaderFallback) {
+        const firstRow = rows[0];
+        if (firstRow.some(cell => String(cell).trim())) {
+          headers = firstRow.map(cell => String(cell).trim());
+          rows.shift();
+        }
+      }
+
+      const rowObjects = rows.map(cells => {
+        const item = {};
+        headers.forEach((header, index) => {
+          item[header] = cells[index] != null ? cells[index] : '';
+        });
+        return item;
+      });
+      return { headers, rowObjects };
+    }
+
+    function getHeaderKey(headers, patterns) {
+      return headers.find(header => {
+        const key = header.trim().toLowerCase();
+        return patterns.some(pattern => new RegExp(pattern, 'i').test(key));
+      });
+    }
+
+    function normalizeImageUrl(url) {
+      if (!url) return '';
+      const value = String(url).trim();
+      if (/\.(png|jpe?g|gif|webp|svg)$/i.test(value)) return value;
+      const hizliMatch = value.match(/^https?:\/\/(?:www\.)?hizliresim\.com\/([A-Za-z0-9]+)(?:\/)?$/i);
+      if (hizliMatch) {
+        return `https://i.hizliresim.com/${hizliMatch[1]}.png`;
+      }
+      return value;
+    }
+
+    function updateImgSrc(tag, url) {
+      const srcPattern = /\bsrc\s*=\s*(['"])(.*?)\1/i;
+      if (srcPattern.test(tag)) {
+        return tag.replace(srcPattern, `src=$1${url}$1`);
+      }
+      return tag.replace(/<img\b/i, `<img src="${url}"`);
+    }
+
+    function decodeHtmlEntities(value) {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = String(value || '');
+      return textarea.value;
+    }
+
+    function normalizeLabelText(value) {
+      return decodeHtmlEntities(String(value || ''))
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w_-]+/g, '');
+    }
+
+    function getLabelImagePairs(headers) {
+      const pairs = [];
+      headers.forEach(header => {
+        const key = String(header || '').trim();
+        const normalizedKey = key.toLowerCase();
+        const match = normalizedKey.match(/^yaz[iı](s[iı])?(\d*)$/i);
+        if (!match) return;
+        const suffix = match[2] || '';
+        const imageHeader = headers.find(candidate => {
+          const candidateKey = String(candidate || '').trim().toLowerCase();
+          return new RegExp(`^g(örsel|orsel)i?${suffix}$`, 'i').test(candidateKey);
+        });
+        if (imageHeader) {
+          pairs.push({ labelKey: key, imageKey: imageHeader });
+        }
+      });
+      return pairs;
+    }
+
+    function replaceImageByLabelPairs(html, pairs) {
+      if (!Array.isArray(pairs) || !pairs.length) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        for (const pair of pairs) {
+          const labelText = normalizeLabelText(pair.label);
+          if (!labelText || !pair.src) continue;
+          if (altText === labelText || altText.includes(labelText) || labelText.includes(altText)) {
+            return updateImgSrc(tag, pair.src);
+          }
+        }
+        return tag;
+      });
+    }
+
+    function replaceLogoInHtml(html, logoUrl, logoLabel) {
+      if (!logoUrl || !logoLabel) return html;
+      const normalizedLabel = normalizeLabelText(logoLabel);
+      if (!normalizedLabel) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        if (altText === normalizedLabel || altText.includes(normalizedLabel) || normalizedLabel.includes(altText)) {
+          return updateImgSrc(tag, logoUrl);
+        }
+        return tag;
+      });
+    }
+
+    function replaceGorselInHtml(html, imageUrl, imageLabel) {
+      if (!imageUrl || !imageLabel) return html;
+      const normalizedLabel = normalizeLabelText(imageLabel);
+      if (!normalizedLabel) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        if (altText === normalizedLabel || altText.includes(normalizedLabel) || normalizedLabel.includes(altText)) {
+          return updateImgSrc(tag, imageUrl);
+        }
+        return tag;
+      });
+    }
+
+    function renderableHtml(html, item) {
+      if (!html) return html;
+      let result = html;
+      result = replaceImageByLabelPairs(result, item.labelImagePairs || []);
+      result = replaceLogoInHtml(result, item.logoSrc, item.logoLabel);
+      result = replaceGorselInHtml(result, item.imageSrc, item.imageLabel);
+      const replacements = [
+        { regex: /\{\{\s*logo\s*\}\}/gi, value: item.logoSrc || '' },
+        { regex: /\{\{\s*logo[_-]?url\s*\}\}/gi, value: item.logoSrc || '' },
+        { regex: /\{\{\s*image\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*gorsel\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*img\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*photo\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*category\s*\}\}/gi, value: item.category || '' },
+        { regex: /\{\{\s*title\s*\}\}/gi, value: item.title || '' }
+      ];
+      return replacements.reduce((resultHtml, replacement) => resultHtml.replace(replacement.regex, replacement.value), result);
+    }
+
+    function getQueryIndex() {
+      const params = new URLSearchParams(window.location.search);
+      const indexParam = params.get('index');
+      return indexParam !== null ? Number(indexParam) : NaN;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderDetail(item) {
+      detailContainer.innerHTML = '';
+      detailContainer.style.display = 'block';
+      const title = item.title || item.name || 'Başlıksız gönderi';
+      const ulakbelNo = item.ulakbelNo ? String(item.ulakbelNo).trim() : '';
+      const category = item.category ? String(item.category).trim() : '';
+
+      const header = document.createElement('div');
+      header.className = 'detail-header';
+      const heading = document.createElement('h2');
+      heading.textContent = title;
+      header.appendChild(heading);
+      detailContainer.appendChild(header);
+
+      const createField = (label, value) => {
+        if (!value) return null;
+        const block = document.createElement('div');
+        block.className = 'detail-field';
+        const heading = document.createElement('h4');
+        heading.textContent = label;
+        const content = document.createElement('p');
+        content.textContent = value;
+        block.appendChild(heading);
+        block.appendChild(content);
+        return block;
+      };
+
+      const fields = document.createElement('div');
+      fields.className = 'detail-fields';
+      const logoField = createField('Logo URL', item.logoSrc);
+      if (logoField) fields.appendChild(logoField);
+      const imageField = createField('Görsel URL', item.imageSrc);
+      if (imageField) fields.appendChild(imageField);
+      if (fields.childElementCount) {
+        detailContainer.appendChild(fields);
+      }
+
+      if (item.logoSrc || item.imageSrc) {
+        const media = document.createElement('div');
+        media.className = 'detail-media';
+        if (item.logoSrc) {
+          const img = document.createElement('img');
+          img.src = item.logoSrc;
+          img.alt = 'Logo';
+          media.appendChild(img);
+        }
+        if (item.imageSrc) {
+          const img = document.createElement('img');
+          img.src = item.imageSrc;
+          img.alt = 'Görsel';
+          media.appendChild(img);
+        }
+        detailContainer.appendChild(media);
+      }
+
+      if (item.titleHtml) {
+        const titleHtmlBlock = document.createElement('div');
+        titleHtmlBlock.className = 'detail-body';
+        titleHtmlBlock.innerHTML = '<h4>Ulakbel Başlığı HTML</h4><pre>' + escapeHtml(item.titleHtml) + '</pre>';
+        detailContainer.appendChild(titleHtmlBlock);
+      }
+
+      if (item.previewHtml) {
+        const body = document.createElement('div');
+        body.className = 'detail-body preview-content';
+        body.innerHTML = renderableHtml(item.previewHtml, item);
+        detailContainer.appendChild(body);
+
+        const rawHtmlBlock = document.createElement('div');
+        rawHtmlBlock.className = 'detail-body';
+        const rawHtmlHeader = document.createElement('div');
+        rawHtmlHeader.style.display = 'flex';
+        rawHtmlHeader.style.justifyContent = 'space-between';
+        rawHtmlHeader.style.alignItems = 'center';
+        rawHtmlHeader.innerHTML = '<h4 style="margin:0;">HTML İçeriği</h4>';
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'button copy-button';
+        copyButton.textContent = 'HTML Kopyala';
+        const originalCopyText = copyButton.textContent;
+        copyButton.addEventListener('click', () => {
+          navigator.clipboard.writeText(item.previewHtml || '').then(() => {
+            setStatus('HTML içeriği kopyalandı.');
+            copyButton.textContent = 'Kopyalandı';
+            setTimeout(() => {
+              copyButton.textContent = originalCopyText;
+            }, 2000);
+          }).catch(() => {
+            setStatus('HTML kopyalanamadı. Lütfen tekrar deneyin.', true);
+            copyButton.textContent = 'Kopyalama başarısız';
+            setTimeout(() => {
+              copyButton.textContent = originalCopyText;
+            }, 2000);
+          });
+        });
+        rawHtmlHeader.appendChild(copyButton);
+        rawHtmlBlock.appendChild(rawHtmlHeader);
+        detailContainer.appendChild(rawHtmlBlock);
+      }
+    }
+
+    async function loadDetail() {
+      if (!googleSheetId) {
+        setStatus('Google Sheet ID ayarlı değil. config.js içinde googleSheetId değerini kontrol edin.', true);
+        return;
+      }
+      if (!googlePreviewTab) {
+        setStatus('Google preview tab adı ayarlı değil. config.js içinde googlePreviewTab değerini girin.', true);
+        return;
+      }
+      const rowIndex = getQueryIndex();
+      if (Number.isNaN(rowIndex)) {
+        setStatus('Bu sayfa doğru bir gönderi diziniyle açılmamış. Lütfen ulakbelForm.html üzerinden yeniden açın.', true);
+        return;
+      }
+
+      const sheetNameQuery = `&sheet=${encodeURIComponent(googlePreviewTab)}`;
+      const url = `https://docs.google.com/spreadsheets/d/${googleSheetId}/gviz/tq?tqx=out:json${sheetNameQuery}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          setStatus('Google Sheet sekmesi yüklenemedi. Sekme adını ve paylaşım ayarlarını kontrol edin.', true);
+          return;
+        }
+        const text = await response.text();
+        const parsed = parseGvizResponse(text);
+        if (!parsed) {
+          setStatus('Google Sheet verisi beklenmedik formatta geldi.', true);
+          return;
+        }
+
+        const { headers, rowObjects } = buildPreviewRows(parsed);
+        const titleKey = getHeaderKey(headers, ['^title$', '^name$', '^heading$', '^label$']);
+        const titleHtmlKey = getHeaderKey(headers, ['^title\s*html$','^html\s*title$','^ulakbel\s*başlığı\s*html$','^ulakbel\s*başlık$','^title_html$','^ulakbel_html$']);
+        const previewKey = getHeaderKey(headers, ['^html$', '^template$', '^content$', '^preview$', '^body$', '^message$', '^snippet$']);
+        const logoKey = getHeaderKey(headers, ['^logo$','^logo[_ ]?url$','^logourl$','^icon$','^logo-?img$']);
+        const logoLabelKey = getHeaderKey(headers, ['^yaz[iı]s[iı]\s*logo$','^logo\s*text$','^logo\s*label$','^logo\s*yaz[iı]s[iı]$']);
+        const imageKey = getHeaderKey(headers, ['^image$','^img$','^gorsel$','^görsel$','^foto$','^photo$','^picture$']);
+        const imageLabelKey = getHeaderKey(headers, ['^yaz[iı]s[iı]\s*görsel$','^yaz[iı]s[iı]\s*gorsel$','^image\s*text$','^image\s*label$','^gorsel\s*text$']);
+        const ulakbelKey = getHeaderKey(headers, ['^ulakbel$','^ulakbel[_ ]?no$','^id$','^code$','^no$']);
+        const categoryKey = getHeaderKey(headers, ['^category$','^kategori$','^group$','^grup$','^type$','^label$']);
+
+        const labelImagePairs = getLabelImagePairs(headers);
+        const items = rowObjects.map((row, index) => ({
+          title: titleKey ? row[titleKey] : '',
+          titleHtml: titleHtmlKey ? row[titleHtmlKey] : '',
+          previewHtml: previewKey ? row[previewKey] : '',
+          logoSrc: logoKey ? normalizeImageUrl(row[logoKey]) : '',
+          logoLabel: logoLabelKey ? row[logoLabelKey] : '',
+          imageSrc: imageKey ? normalizeImageUrl(row[imageKey]) : '',
+          imageLabel: imageLabelKey ? row[imageLabelKey] : '',
+          ulakbelNo: ulakbelKey ? row[ulakbelKey] : `#${index + 1}`,
+          labelImagePairs: labelImagePairs.map(pair => ({
+            label: row[pair.labelKey] || '',
+            src: normalizeImageUrl(row[pair.imageKey] || '')
+          })).filter(pair => pair.label && pair.src),
+          category: categoryKey ? row[categoryKey] : ''
+        })).filter(item => item.previewHtml || item.logoSrc || item.imageSrc || item.labelImagePairs.length || item.titleHtml);
+
+        if (rowIndex < 0 || rowIndex >= items.length) {
+          setStatus('Seçilen gönderi bulunamadı. Lütfen preview sayfasından tekrar seçin.', true);
+          return;
+        }
+
+        renderDetail(items[rowIndex]);
+      } catch (error) {
+        console.error(error);
+        setStatus('Veri yükleme sırasında hata oluştu. Konsolu kontrol edin.', true);
+      }
+    }
+
+    loadDetail();
+  </script>
+</body>
+</html>

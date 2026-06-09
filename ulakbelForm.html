@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Önizleme</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.14), transparent 25%),
+        #eef2ff;
+    }
+    .page {
+      width: 100%;
+      margin: 0;
+      padding: 42px 0 80px;
+    }
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      padding: 12px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(67, 56, 202, 0.18);
+      background: #fff;
+      color: #4338ca;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 20px 70px rgba(15, 23, 42, 0.08);
+      margin-bottom: 24px;
+    }
+    .card h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 3vw, 2.8rem);
+    }
+    .card p {
+      margin: 0;
+      line-height: 1.75;
+      color: #475569;
+      font-size: 1rem;
+    }
+    .status {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      color: #0f172a;
+      line-height: 1.6;
+    }
+    .preview-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 18px;
+      margin-bottom: 10px;
+    }
+    .category-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      width: 100%;
+    }
+    .category-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(255, 255, 255, 0.95);
+      color: #0f172a;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+    .category-pill:hover {
+      transform: translateY(-1px);
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+    .category-pill.active {
+      background: #4338ca;
+      color: #fff;
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+    @media (max-width: 1350px) {
+      .preview-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 1100px) {
+      .preview-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 760px) {
+      .preview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 520px) {
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .preview-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .preview-card:hover {
+      transform: scale(1.015);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+    }
+    .preview-card-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      background: #f8fafc;
+    }
+    .preview-card-header h2 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .preview-card-body {
+      padding: 22px;
+      background: #ffffff;
+    }
+    .preview-card-body > div {
+      width: 100%;
+    }
+    .preview-card-media {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 18px;
+      padding: 22px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      background: #f8fafc;
+    }
+    .preview-card-media-block {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .preview-card-media-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #475569;
+      text-transform: uppercase;
+    }
+    .preview-card-media-image {
+      min-height: 120px;
+      background: #f3f4f6;
+      border-radius: 18px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .preview-card-media-image img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+      <div id="status" class="status" style="display:none;"></div>
+      <div class="preview-filters" style="display:none;">
+        <div id="category-pills" class="category-pills"></div>
+      </div>
+    <div id="previews" class="preview-grid"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    const previews = document.getElementById('previews');
+    const categoryPills = document.getElementById('category-pills');
+    const categoryFilterRow = document.querySelector('.preview-filters');
+    const siteConfig = window.siteConfig || {};
+    const googleSheetId = siteConfig.googleSheetId || '';
+    const googlePreviewTab = siteConfig.googlePreviewTab || '';
+    let allItems = [];
+    let selectedCategory = 'Tümü';
+    let categoryKey = null;
+
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.display = isError ? 'block' : 'none';
+      status.style.color = isError ? '#b45309' : '#0f172a';
+      status.style.borderColor = isError ? 'rgba(245, 158, 11, 0.35)' : 'rgba(148, 163, 184, 0.18)';
+      status.style.background = isError ? 'rgba(254, 243, 199, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+    }
+
+    function parseGvizResponse(text) {
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!match) return null;
+      return JSON.parse(match[1]);
+    }
+
+    function normalizeValue(cell) {
+      if (!cell) return '';
+      if (cell.formattedValue !== undefined) return cell.formattedValue;
+      if (cell.v !== undefined) return cell.v;
+      return '';
+    }
+
+    function buildPreviewRows(data) {
+      let headers = data.table.cols.map(col => (col.label || col.id || '').trim());
+      const rows = data.table.rows.map(row => row.c.map(normalizeValue));
+
+      const isGenericColumnLabel = value => /^[A-Z]+$/i.test(value);
+      const needsHeaderFallback = headers.length > 0 && rows.length > 0 &&
+        (headers.every(header => !header) || headers.every(header => isGenericColumnLabel(header)));
+
+      // Eğer Google Sheets sütun başlıklarını boş ya da A/B/C şeklinde dönerse,
+      // ilk satırı başlık olarak kullan ve veriyi bir satır yukarı kaydır.
+      if (needsHeaderFallback) {
+        const firstRow = rows[0];
+        if (firstRow.some(cell => String(cell).trim())) {
+          headers = firstRow.map(cell => String(cell).trim());
+          rows.shift();
+        }
+      }
+
+      const rowObjects = rows.map(cells => {
+        const item = {};
+        headers.forEach((header, index) => {
+          item[header] = cells[index] != null ? cells[index] : '';
+        });
+        return item;
+      });
+      return { headers, rowObjects };
+    }
+
+    function getHeaderKey(headers, patterns) {
+      return headers.find(header => {
+        const key = header.trim().toLowerCase();
+        return patterns.some(pattern => new RegExp(pattern, 'i').test(key));
+      });
+    }
+
+    function normalizeImageUrl(url) {
+      if (!url) return '';
+      const value = String(url).trim();
+      if (/\.(png|jpe?g|gif|webp|svg)$/i.test(value)) return value;
+      const hizliMatch = value.match(/^https?:\/\/(?:www\.)?hizliresim\.com\/([A-Za-z0-9]+)(?:\/)?$/i);
+      if (hizliMatch) {
+        return `https://i.hizliresim.com/${hizliMatch[1]}.png`;
+      }
+      return value;
+    }
+
+    function updateImgSrc(tag, url) {
+      const srcPattern = /\bsrc\s*=\s*(['"])(.*?)\1/i;
+      if (srcPattern.test(tag)) {
+        return tag.replace(srcPattern, `src=$1${url}$1`);
+      }
+      return tag.replace(/<img\b/i, `<img src="${url}"`);
+    }
+
+    function decodeHtmlEntities(value) {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = String(value || '');
+      return textarea.value;
+    }
+
+    function normalizeLabelText(value) {
+      return decodeHtmlEntities(String(value || ''))
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w_-]+/g, '');
+    }
+
+    function getLabelImagePairs(headers) {
+      const pairs = [];
+      headers.forEach(header => {
+        const key = String(header || '').trim();
+        const normalizedKey = key.toLowerCase();
+        const match = normalizedKey.match(/^yaz[iı](s[iı])?(\d*)$/i);
+        if (!match) return;
+        const suffix = match[2] || '';
+        const imageHeader = headers.find(candidate => {
+          const candidateKey = String(candidate || '').trim().toLowerCase();
+          return new RegExp(`^g(örsel|orsel)i?${suffix}$`, 'i').test(candidateKey);
+        });
+        if (imageHeader) {
+          pairs.push({ labelKey: key, imageKey: imageHeader });
+        }
+      });
+      return pairs;
+    }
+
+    function replaceImageByLabelPairs(html, pairs) {
+      if (!Array.isArray(pairs) || !pairs.length) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        for (const pair of pairs) {
+          const labelText = normalizeLabelText(pair.label);
+          if (!labelText || !pair.src) continue;
+          if (altText === labelText || altText.includes(labelText) || labelText.includes(altText)) {
+            return updateImgSrc(tag, pair.src);
+          }
+        }
+        return tag;
+      });
+    }
+
+    function replaceLogoInHtml(html, logoUrl, logoLabel) {
+      if (!logoUrl || !logoLabel) return html;
+      const normalizedLabel = normalizeLabelText(logoLabel);
+      if (!normalizedLabel) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        if (altText === normalizedLabel || altText.includes(normalizedLabel) || normalizedLabel.includes(altText)) {
+          return updateImgSrc(tag, logoUrl);
+        }
+        return tag;
+      });
+    }
+
+    function replaceGorselInHtml(html, imageUrl, imageLabel) {
+      if (!imageUrl || !imageLabel) return html;
+      const normalizedLabel = normalizeLabelText(imageLabel);
+      if (!normalizedLabel) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        if (altText === normalizedLabel || altText.includes(normalizedLabel) || normalizedLabel.includes(altText)) {
+          return updateImgSrc(tag, imageUrl);
+        }
+        return tag;
+      });
+    }
+
+    function renderableHtml(html, item) {
+      if (!html) return html;
+      let result = html;
+      result = replaceImageByLabelPairs(result, item.labelImagePairs || []);
+      result = replaceLogoInHtml(result, item.logoSrc, item.logoLabel);
+      result = replaceGorselInHtml(result, item.imageSrc, item.imageLabel);
+      const replacements = [
+        { regex: /\{\{\s*logo\s*\}\}/gi, value: item.logoSrc || '' },
+        { regex: /\{\{\s*logo[_-]?url\s*\}\}/gi, value: item.logoSrc || '' },
+        { regex: /\{\{\s*image\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*gorsel\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*img\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*photo\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*category\s*\}\}/gi, value: item.category || '' },
+        { regex: /\{\{\s*title\s*\}\}/gi, value: item.title || '' }
+      ];
+      return replacements.reduce((resultHtml, replacement) => resultHtml.replace(replacement.regex, replacement.value), result);
+    }
+
+    function renderCategoryOptions(categories) {
+      if (!categoryPills || !categoryFilterRow) return;
+      categoryPills.innerHTML = '';
+      const allPill = document.createElement('button');
+      allPill.type = 'button';
+      allPill.className = `category-pill${selectedCategory === 'Tümü' ? ' active' : ''}`;
+      allPill.textContent = 'Tümü';
+      allPill.addEventListener('click', () => {
+        selectedCategory = 'Tümü';
+        filterItems();
+        renderCategoryOptions(categories);
+      });
+      categoryPills.appendChild(allPill);
+      categories.forEach(category => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = `category-pill${selectedCategory === category ? ' active' : ''}`;
+        pill.textContent = category;
+        pill.addEventListener('click', () => {
+          selectedCategory = category;
+          filterItems();
+          renderCategoryOptions(categories);
+        });
+        categoryPills.appendChild(pill);
+      });
+      categoryFilterRow.style.display = categories.length > 0 ? 'flex' : 'none';
+    }
+
+    function filterItems() {
+      const filtered = selectedCategory === 'Tümü'
+        ? allItems
+        : allItems.filter(item => item.category === selectedCategory);
+      renderPreviews(filtered);
+    }
+
+    function renderPreviews(items) {
+      previews.innerHTML = '';
+      if (!items.length) {
+        setStatus('Sekmede gösterilecek içerik bulunamadı.', true);
+        return;
+      }
+
+      items.forEach((item, filteredIndex) => {
+        const card = document.createElement('article');
+        card.className = 'preview-card';
+
+        const header = document.createElement('div');
+        header.className = 'preview-card-header';
+        const title = document.createElement('h2');
+        title.textContent = item.title || item.name || 'Başlıksız önizleme';
+        header.appendChild(title);
+        card.appendChild(header);
+
+        const previewHtml = item.previewHtml || item.html || item.template || item.content || item.body || item.message || '';
+        if (previewHtml) {
+          const body = document.createElement('div');
+          body.className = 'preview-card-body';
+          const preview = document.createElement('div');
+          preview.innerHTML = renderableHtml(previewHtml, item);
+          body.appendChild(preview);
+          card.appendChild(body);
+        }
+        card.addEventListener('click', () => {
+          const itemIndex = allItems.indexOf(item);
+          if (itemIndex >= 0) {
+            window.location.href = `ulakbelForm-detail.html?index=${itemIndex}`;
+          }
+        });
+        previews.appendChild(card);
+      });
+    }
+
+    async function loadPreviewSheet() {
+      if (!googleSheetId) {
+        setStatus('Google Sheet ID ayarlı değil. config.js içinde googleSheetId değerini kontrol edin.', true);
+        return;
+      }
+      if (!googlePreviewTab) {
+        setStatus('Google preview tab adı ayarlı değil. config.js içinde googlePreviewTab değerini girin.', true);
+        return;
+      }
+
+      const sheetNameQuery = `&sheet=${encodeURIComponent(googlePreviewTab)}`;
+      const url = `https://docs.google.com/spreadsheets/d/${googleSheetId}/gviz/tq?tqx=out:json${sheetNameQuery}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          setStatus('Google Sheet sekmesi yüklenemedi. Sekme adını ve paylaşım ayarlarını kontrol edin.', true);
+          return;
+        }
+        const text = await response.text();
+        const parsed = parseGvizResponse(text);
+        if (!parsed) {
+          setStatus('Google Sheet verisi beklenmedik formatta geldi.', true);
+          return;
+        }
+
+        const { headers, rowObjects } = buildPreviewRows(parsed);
+        const titleKey = getHeaderKey(headers, ['^title$', '^name$', '^heading$', '^label$']);
+        const previewKey = getHeaderKey(headers, ['^html$', '^template$', '^content$', '^preview$', '^body$', '^message$', '^snippet$']);
+        const logoKey = getHeaderKey(headers, ['^logo$','^logo[_ ]?url$','^logourl$','^icon$','^logo-?img$']);
+        const logoLabelKey = getHeaderKey(headers, ['^yaz[iı]s[iı]\s*logo$','^logo\s*text$','^logo\s*label$','^logo\s*yaz[sı]s[iı]$']);
+        const imageKey = getHeaderKey(headers, ['^image$','^img$','^gorsel$','^görsel$','^foto$','^photo$','^picture$']);
+        const imageLabelKey = getHeaderKey(headers, ['^yaz[iı]s[iı]\s*görsel$','^yaz[iı]s[iı]\s*gorsel$','^image\s*text$','^image\s*label$','^gorsel\s*text$']);
+        categoryKey = getHeaderKey(headers, ['^category$','^kategori$','^group$','^grup$','^type$','^label$']);
+
+        if (!previewKey && !logoKey && !imageKey) {
+          const columnList = headers.filter(Boolean).map(h => `'${h}'`).join(', ') || '(boş)';
+          setStatus(`Sheet sekmesinde html/template/content veya logo/image gibi bir sütun başlığı bulunamadı. Bulunan sütunlar: ${columnList}`, true);
+          return;
+        }
+
+        const labelImagePairs = getLabelImagePairs(headers);
+      const items = rowObjects.map(row => ({
+          title: titleKey ? row[titleKey] : '',
+          previewHtml: previewKey ? row[previewKey] : '',
+          logoSrc: logoKey ? normalizeImageUrl(row[logoKey]) : '',
+          logoLabel: logoLabelKey ? row[logoLabelKey] : '',
+          imageSrc: imageKey ? normalizeImageUrl(row[imageKey]) : '',
+          imageLabel: imageLabelKey ? row[imageLabelKey] : '',
+          labelImagePairs: labelImagePairs.map(pair => ({
+            label: row[pair.labelKey] || '',
+            src: normalizeImageUrl(row[pair.imageKey] || '')
+          })).filter(pair => pair.label && pair.src),
+          category: categoryKey ? row[categoryKey] : ''
+        })).filter(item => item.previewHtml || item.logoSrc || item.imageSrc || item.labelImagePairs.length);
+
+        allItems = items;
+        if (categoryKey) {
+          const categories = Array.from(new Set(items.map(item => item.category || 'Diğer'))).sort();
+          renderCategoryOptions(categories);
+        } else if (categoryFilterRow) {
+          categoryFilterRow.style.display = 'none';
+        }
+        filterItems();
+      } catch (error) {
+        console.error(error);
+        setStatus('Veri yükleme sırasında hata oluştu. Konsolu kontrol edin.', true);
+      }
+    }
+
+    loadPreviewSheet();
+  </script>
+</body>
+</html>
