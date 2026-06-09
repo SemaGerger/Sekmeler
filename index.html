@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site Adreslerim</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.14), transparent 25%),
+        #eef2ff;
+      color: #0f172a;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 42px 24px 80px;
+    }
+    .page-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .page {
+        padding: 32px 18px 70px;
+      }
+      .page-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 20px 70px rgba(15, 23, 42, 0.08);
+    }
+    .sidebar-header {
+      margin-bottom: 18px;
+    }
+    .sidebar-title {
+      margin: 0;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #4338ca;
+      font-weight: 700;
+    }
+    .sidebar-description {
+      margin: 10px 0 0;
+      color: #64748b;
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+    .sidebar-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-top: 18px;
+      padding: 12px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(67, 56, 202, 0.18);
+      background: #fff;
+      color: #4338ca;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .sidebar-button:hover {
+      background: rgba(238, 242, 255, 0.95);
+      transform: translateY(-1px);
+    }
+    .category-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .category-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      background: rgba(248, 250, 252, 0.95);
+      color: #0f172a;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+    .category-item:hover {
+      background: rgba(238, 242, 255, 0.9);
+    }
+    .category-item.active {
+      background: #4338ca;
+      color: #fff;
+      border-color: rgba(67, 56, 202, 0.18);
+      transform: translateX(1px);
+    }
+    .category-item span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .category-count {
+      color: inherit;
+      opacity: 0.7;
+      font-size: 0.95rem;
+    }
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin-bottom: 0;
+    }
+    .hero {
+      display: grid;
+      gap: 12px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .quick-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .quick-filter {
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid rgba(67, 56, 202, 0.18);
+      background: #fff;
+      color: #4338ca;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+    }
+    .quick-filter:hover {
+      background: rgba(238, 242, 255, 0.9);
+    }
+    .quick-filter.active {
+      background: #4338ca;
+      color: #fff;
+      border-color: rgba(67, 56, 202, 0.25);
+      transform: translateY(-1px);
+    }
+    .search {
+      flex: 1;
+      min-width: 240px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 18px;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #0f172a;
+      font-size: 1rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .search:focus {
+      border-color: #c7d2fe;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    }
+    .title {
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: 1.05;
+      margin: 0;
+    }
+    .subtitle {
+      max-width: 720px;
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #475569;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #site-count {
+      color: #475569;
+      font-size: 0.95rem;
+      min-width: 160px;
+    }
+    #site-list {
+      display: grid;
+      gap: 40px;
+      padding: 0;
+      margin: 0;
+    }
+    .category-section {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+    .category-title {
+      margin: 0 0 18px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.02em;
+    }
+    .category-cards {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+    }
+    .site-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(67, 56, 202, 0.12);
+      color: #4338ca;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 16px;
+      background: #eef2ff;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      overflow: hidden;
+    }
+    .logo img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
+    .site-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .site-url {
+      margin: 4px 0 0;
+      color: #64748b;
+      font-size: 0.88rem;
+    }
+    .category-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.12);
+      color: #4338ca;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .description {
+      margin: 0;
+      color: #475569;
+      line-height: 1.7;
+      min-height: 3rem;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .button:hover {
+      transform: translateY(-1px);
+    }
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .button-primary {
+      background: #4338ca;
+      color: #fff;
+    }
+    .button-secondary {
+      background: #f8fafc;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    .button-outline {
+      background: transparent;
+      color: #4338ca;
+      border-color: rgba(67, 56, 202, 0.18);
+    }
+    #loading,
+    #empty-state {
+      color: #475569;
+      font-size: 1rem;
+      text-align: center;
+      margin-top: 24px;
+    }
+    #preview-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.82);
+      padding: 24px;
+      z-index: 50;
+    }
+    #preview-overlay.active {
+      display: flex;
+    }
+    .preview-panel {
+      width: 100%;
+      max-width: 1120px;
+      max-height: calc(100vh - 64px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #0f172a;
+      box-shadow: 0 40px 120px rgba(15, 23, 42, 0.45);
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 24px;
+      background: rgba(15, 23, 42, 0.98);
+      color: #fff;
+    }
+    .preview-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .preview-note {
+      margin: 4px 0 0;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .preview-iframe {
+      width: 100%;
+      border: none;
+      min-height: 360px;
+      background: #0f172a;
+    }
+    .close-button {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    .close-button:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    @media (max-width: 640px) {
+      .page {
+        padding-top: 32px;
+      }
+      .header {
+        gap: 14px;
+      }
+      .card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-grid">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <p class="sidebar-title">Kategoriler</p>
+          <p class="sidebar-description">github</p>
+        </div>
+        <div id="category-list" class="category-list"></div>
+        <a class="sidebar-button" href="notes.html">Excel Notlarını Düzenle</a>
+      </aside>
+      <main class="main-content">
+        <header class="header">
+          <div class="hero">
+            <h1 class="title">Siteler</h1>
+            <p class="subtitle">github</p>
+          </div>
+          <div class="controls">
+            <input id="search" class="search" type="search" placeholder="Site ara..." aria-label="Site ara" />
+            <div id="site-count">0 site görüntüleniyor</div>
+          </div>
+          <div class="quick-filters" id="quick-filters">
+            <button type="button" class="quick-filter button-outline" data-category="Tümü">Tümü</button>
+            <button type="button" class="quick-filter button-outline" data-category="Sık Kullanılanlar">Sık Kullanılanlar</button>
+            <button type="button" class="quick-filter button-outline" data-category="Her Zaman Açılacaklar">Her Zaman Açılacaklar</button>
+          </div>
+        </header>
+
+        <div>
+          <ul id="site-list"></ul>
+          <div id="loading">Veriler yükleniyor...</div>
+          <div id="empty-state" style="display:none;">Aradığınız kritere uygun site bulunamadı.</div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div id="preview-overlay" aria-hidden="true">
+    <div class="preview-panel">
+      <div class="preview-header">
+        <div>
+          <p class="preview-title" id="preview-title">Site Önizleme</p>
+          <p class="preview-note" id="preview-note">Bazı siteler başka alan adından iframe ile görüntülenmeyi sınırlayabilir.</p>
+        </div>
+        <button type="button" class="close-button" data-close="true">Kapat</button>
+      </div>
+      <iframe id="preview-frame" class="preview-iframe" src="about:blank" title="Site önizleme"></iframe>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const siteList = document.getElementById('site-list');
+    const loading = document.getElementById('loading');
+    const emptyState = document.getElementById('empty-state');
+    const siteCount = document.getElementById('site-count');
+    const searchInput = document.getElementById('search');
+    const categoryList = document.getElementById('category-list');
+    const overlay = document.getElementById('preview-overlay');
+    const previewTitle = document.getElementById('preview-title');
+    const previewNote = document.getElementById('preview-note');
+    const previewFrame = document.getElementById('preview-frame');
+
+    // If you want to use a public Google Sheet instead of local data.json,
+    // set the sheet ID below in config.js and optionally the sheet name.
+    const siteConfig = window.siteConfig || {};
+    const googleSheetId = siteConfig.googleSheetId || '';
+    const googleSheetTab = siteConfig.googleSheetTab || '';
+
+    let sites = [];
+    let filteredSites = [];
+    let selectedCategory = 'Tümü';
+    let manualCategories = [];
+    let categoriesLoaded = false;
+    let sitesLoaded = false;
+
+    function updateCounts() {
+      siteCount.textContent = `${filteredSites.length} site görüntüleniyor`;
+    }
+
+    function getSiteGroup(site) {
+      if (site.group) return site.group;
+      const category = site.category || '';
+      return ['Büyükçekmece Siteler', 'Notlar'].includes(category)
+        ? 'Vatandaş'
+        : 'Kurum';
+    }
+
+    function getCategoryCount(category) {
+      if (category === 'Tümü') return sites.length;
+      if (category === 'Sık Kullanılanlar') return sites.filter(site => site.favorite).length;
+      if (category === 'Her Zaman Açılacaklar') return sites.filter(site => site.alwaysOpen).length;
+      return sites.filter(site => (site.category || 'Diğer') === category).length;
+    }
+
+    function loadCategories() {
+      return fetch('categories.json')
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(data => {
+          if (data && Array.isArray(data.categories)) manualCategories = data.categories;
+        })
+        .catch(() => {
+          manualCategories = [];
+        })
+        .finally(() => {
+          categoriesLoaded = true;
+          maybeInitialize();
+        });
+    }
+
+    function parseGoogleSheetData(text) {
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!match) return [];
+      const json = JSON.parse(match[1]);
+      const cols = json.table.cols.map(col => (col.label || col.id || '').trim().toLowerCase());
+      const rows = json.table.rows || [];
+      const mapHeader = header => {
+        const key = header.trim().toLowerCase();
+        if (/^name$|^title$|^site$/i.test(key)) return 'name';
+        if (/^url$|^link$|^adres$/i.test(key)) return 'url';
+        if (/^description$|^desc$|^açıklama$/i.test(key)) return 'description';
+        if (/^category$|^kategori$/i.test(key)) return 'category';
+        if (/^favorite$|^favourite$|^star$|^sık kullanılan$/i.test(key)) return 'favorite';
+        if (/^alwaysopen$|^always_open$|^always open$|^her zaman$/i.test(key)) return 'alwaysOpen';
+        if (/^group$|^grup$/i.test(key)) return 'group';
+        return null;
+      };
+      const headers = cols.map(mapHeader);
+      return rows.map(row => {
+        const site = {};
+        row.c.forEach((cell, index) => {
+          const field = headers[index];
+          if (!field || !cell) return;
+          const value = cell.v != null ? cell.v : (cell.f || '');
+          if (field === 'favorite' || field === 'alwaysOpen') {
+            site[field] = String(value).trim().toLowerCase() === 'true' || value === true || value === 1 || String(value).trim() === 'evet';
+          } else {
+            site[field] = String(value).trim();
+          }
+        });
+        return site;
+      }).filter(site => site.name && site.url);
+    }
+
+    function fetchSitesFromGoogleSheet() {
+      const sheetNameQuery = googleSheetTab ? `&sheet=${encodeURIComponent(googleSheetTab)}` : '';
+      const url = `https://docs.google.com/spreadsheets/d/${googleSheetId}/gviz/tq?tqx=out:json${sheetNameQuery}`;
+      return fetch(url)
+        .then(response => response.text())
+        .then(text => {
+          sites = parseGoogleSheetData(text);
+        });
+    }
+
+    function loadSites() {
+      const source = googleSheetId.trim() ? fetchSitesFromGoogleSheet() : fetch('data.json').then(response => response.json()).then(data => { sites = Array.isArray(data) ? data : []; });
+      return source
+        .catch(() => {
+          loading.textContent = 'Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.';
+          siteCount.textContent = 'Veri hatası';
+          sites = [];
+        })
+        .finally(() => {
+          sitesLoaded = true;
+          maybeInitialize();
+        });
+    }
+
+    function maybeInitialize() {
+      if (!categoriesLoaded || !sitesLoaded) return;
+      populateCategoryList();
+      renderSites(sites);
+    }
+
+    function selectCategory(category) {
+      selectedCategory = category;
+      document.querySelectorAll('.category-item').forEach(button => {
+        button.classList.toggle('active', button.dataset.category === category);
+      });
+      document.querySelectorAll('.quick-filter').forEach(button => {
+        button.classList.toggle('active', button.dataset.category === category);
+      });
+      filterSitesAndRender();
+    }
+
+    function getSidebarCategories() {
+      return manualCategories.length
+        ? manualCategories.slice()
+        : Array.from(new Set(sites.map(site => site.category || 'Diğer'))).sort();
+    }
+
+    function populateCategoryList() {
+      const allCategories = getSidebarCategories();
+      categoryList.innerHTML = '';
+
+      allCategories.forEach(category => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'category-item';
+        button.dataset.category = category;
+        button.innerHTML = `<span>${category}</span><span class="category-count">${getCategoryCount(category)}</span>`;
+        button.addEventListener('click', () => selectCategory(category));
+        categoryList.appendChild(button);
+      });
+
+      if (selectedCategory === 'Tümü') {
+        document.querySelectorAll('.category-item').forEach(button => button.classList.remove('active'));
+      }
+    }
+
+    function filterSites() {
+      const query = searchInput.value.trim().toLowerCase();
+      return sites.filter(site => {
+        const matchesQuery = site.name.toLowerCase().includes(query) ||
+          (site.description || '').toLowerCase().includes(query) ||
+          site.url.toLowerCase().includes(query) ||
+          (site.category || '').toLowerCase().includes(query);
+        const matchesCategory = selectedCategory === 'Tümü'
+          ? true
+          : selectedCategory === 'Sık Kullanılanlar'
+            ? site.favorite
+            : selectedCategory === 'Her Zaman Açılacaklar'
+              ? site.alwaysOpen
+              : getSiteGroup(site) === selectedCategory;
+        return matchesQuery && matchesCategory;
+      });
+    }
+
+    function filterSitesAndRender() {
+      const matched = filterSites();
+      renderSites(matched);
+    }
+
+    function getDomain(url) {
+      try {
+        return new URL(url).hostname;
+      } catch {
+        return url;
+      }
+    }
+
+    function canPreviewSite(site) {
+      const blocked = [
+        'docs.google.com',
+        'spreadsheets.google.com',
+        'drive.google.com',
+        'view.officeapps.live.com',
+        'mail.bcekmece.bel.tr',
+        'adssp.bcekmece.bel.tr',
+        'learn.vispeahen.com'
+      ];
+      const normalized = site.url.toLowerCase();
+      return !blocked.some(block => normalized.includes(block));
+    }
+
+    function createCard(site) {
+      const card = document.createElement('li');
+      card.className = 'card';
+
+      const badge = document.createElement('span');
+      badge.className = 'site-badge';
+      badge.textContent = getSiteGroup(site);
+      card.appendChild(badge);
+
+      const head = document.createElement('div');
+      head.className = 'card-head';
+
+      const logo = document.createElement('div');
+      logo.className = 'logo';
+      const icon = document.createElement('img');
+      icon.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(site.url)}&sz=64`;
+      icon.alt = `${site.name} logosu`;
+      logo.appendChild(icon);
+
+      const titleGroup = document.createElement('div');
+      const title = document.createElement('h2');
+      title.className = 'site-title';
+      title.textContent = site.name;
+      const urlText = document.createElement('p');
+      urlText.className = 'site-url';
+      urlText.textContent = getDomain(site.url);
+
+      titleGroup.appendChild(title);
+      titleGroup.appendChild(urlText);
+      head.appendChild(logo);
+      head.appendChild(titleGroup);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const openButton = document.createElement('a');
+      openButton.className = 'button button-primary';
+      openButton.href = site.url;
+      openButton.textContent = 'Siteyi Aç';
+      openButton.target = '_blank';
+      openButton.rel = 'noopener noreferrer';
+
+      const previewButton = document.createElement('button');
+      previewButton.className = 'button button-secondary';
+      previewButton.type = 'button';
+      previewButton.textContent = 'Önizle';
+      if (canPreviewSite(site)) {
+        previewButton.addEventListener('click', () => openPreview(site));
+        actions.appendChild(previewButton);
+      }
+
+      actions.appendChild(openButton);
+
+      card.appendChild(head);
+      card.appendChild(actions);
+
+      return card;
+    }
+
+    function renderSites(list) {
+      siteList.innerHTML = '';
+      filteredSites = list;
+
+      if (!filteredSites.length) {
+        loading.style.display = 'none';
+        emptyState.style.display = 'block';
+        updateCounts();
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      loading.style.display = 'none';
+
+      const grouped = filteredSites.reduce((acc, site) => {
+        const category = site.category || 'Diğer';
+        if (!acc[category]) acc[category] = [];
+        acc[category].push(site);
+        return acc;
+      }, {});
+
+      Object.keys(grouped).sort().forEach(category => {
+        const section = document.createElement('section');
+        section.className = 'category-section';
+
+        const title = document.createElement('h2');
+        title.className = 'category-title';
+        title.textContent = category;
+
+        const cards = document.createElement('div');
+        cards.className = 'category-cards';
+
+        grouped[category].forEach(site => {
+          cards.appendChild(createCard(site));
+        });
+
+        section.appendChild(title);
+        section.appendChild(cards);
+        siteList.appendChild(section);
+      });
+
+      updateCounts();
+    }
+
+    function openPreview(site) {
+      previewTitle.textContent = `${site.name} önizlemesi`;
+      previewNote.textContent = 'Bazı siteler iframe içinde görüntülenmeyi engelleyebilir. Sağdaki kapat düğmesiyle geri dönebilirsiniz.';
+      previewFrame.src = site.url;
+      overlay.classList.add('active');
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePreview() {
+      overlay.classList.remove('active');
+      overlay.setAttribute('aria-hidden', 'true');
+      previewFrame.src = 'about:blank';
+    }
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay || event.target.closest('[data-close]')) {
+        closePreview();
+      }
+    });
+
+    function initializeQuickFilters() {
+      document.querySelectorAll('.quick-filter').forEach(button => {
+        button.addEventListener('click', () => {
+          selectCategory(button.dataset.category);
+        });
+      });
+      document.querySelector('.quick-filter[data-category="Tümü"]')?.classList.add('active');
+    }
+
+    searchInput.addEventListener('input', filterSitesAndRender);
+
+    initializeQuickFilters();
+
+    loadCategories();
+    loadSites();
+  </script>
+</body>
+</html>

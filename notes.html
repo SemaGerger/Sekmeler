@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Excel Notları</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f7ff;
+      color: #0f172a;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 30%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+    .page {
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 32px 24px 56px;
+    }
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 3.2rem);
+      line-height: 1.05;
+    }
+    .topbar p {
+      margin: 8px 0 0;
+      max-width: 720px;
+      color: #475569;
+      line-height: 1.75;
+      font-size: 1rem;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+      margin-bottom: 24px;
+    }
+    .field-group {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(220px, 1fr) 1.5fr auto;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+    .field-group label {
+      display: block;
+      font-size: 0.95rem;
+      color: #334155;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .field-group input,
+    .field-group select,
+    .field-group button {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 14px 16px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .field-group button {
+      cursor: pointer;
+      border-color: transparent;
+      background: #4338ca;
+      color: #fff;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .field-group button:hover {
+      transform: translateY(-1px);
+      background: #3730a3;
+    }
+    .hint {
+      color: #475569;
+      line-height: 1.75;
+      font-size: 0.95rem;
+      margin-top: 12px;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .toolbar button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: 700;
+      color: #fff;
+      background: #4338ca;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .toolbar button.secondary {
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+    .toolbar button:hover {
+      transform: translateY(-1px);
+    }
+    .status {
+      color: #334155;
+      margin-top: 16px;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      table-layout: fixed;
+    }
+    th,
+    td {
+      padding: 14px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    th {
+      text-align: left;
+      color: #334155;
+      font-weight: 700;
+      background: rgba(248, 250, 252, 0.95);
+    }
+    td {
+      color: #1f2937;
+      background: #fff;
+    }
+    td[contenteditable="true"] {
+      min-height: 1.75rem;
+    }
+    td[contenteditable="true"]:focus {
+      outline: 2px solid rgba(99, 102, 241, 0.33);
+      background: #f8fafc;
+    }
+    .actions-row button {
+      margin-right: 8px;
+    }
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(67, 56, 202, 0.18);
+      background: #fff;
+      color: #4338ca;
+      text-decoration: none;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    .warning {
+      color: #b45309;
+      background: rgba(254, 243, 199, 0.75);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 16px;
+      border-radius: 18px;
+      margin-top: 18px;
+    }
+    @media (max-width: 820px) {
+      .field-group {
+        grid-template-columns: 1fr;
+      }
+      .toolbar {
+        justify-content: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="link-button" href="index.html">← Siteler sayfasına dön</a>
+    <div class="topbar">
+      <div>
+        <h1>Google Excel Notları</h1>
+        <p>Google Sheets verisini buradan çekebilir ve kendi tarayıcınızda düzenleyebilirsiniz. Değişiklikler yerel olarak saklanır.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field-group">
+        <label for="sheet-url">Google Sheet URL'si</label>
+        <input id="sheet-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/..." />
+        <button id="load-sheet">Veriyi Yükle</button>
+      </div>
+      <div class="hint">Sheet bağlantısını yapıştırın. Sayfa herkese açık olmalı ya da "web'e yayımlanmış" olmalıdır. Bu sayfa doğrudan Google Sheet'e kaydetmez.</div>
+      <div class="toolbar">
+        <button id="save-changes" class="secondary">Yerel Değişiklikleri Kaydet</button>
+        <button id="export-csv" class="secondary">CSV Olarak İndir</button>
+        <button id="add-row" class="secondary">Satır Ekle</button>
+        <button id="reset-local" class="secondary">Yerel Düzenlemeleri Sıfırla</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="card" id="table-card" style="display:none;">
+      <h2>Sheet Verisi</h2>
+      <div id="data-container"></div>
+      <div class="warning">Düzenlediğiniz veri yalnızca bu tarayıcıda tutulur. Google Sheet'e otomatik gönderim eklemek için bir backend ya da Apps Script gerekir.</div>
+    </div>
+  </div>
+
+  <script>
+    const sheetUrlInput = document.getElementById('sheet-url');
+    const loadButton = document.getElementById('load-sheet');
+    const saveButton = document.getElementById('save-changes');
+    const exportButton = document.getElementById('export-csv');
+    const addRowButton = document.getElementById('add-row');
+    const resetButton = document.getElementById('reset-local');
+    const status = document.getElementById('status');
+    const tableCard = document.getElementById('table-card');
+    const dataContainer = document.getElementById('data-container');
+
+    let sheetId = '';
+    let sheetName = '';
+    let headers = [];
+    let rows = [];
+
+    function parseSheetId(url) {
+      const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      return match ? match[1] : null;
+    }
+
+    function buildKey() {
+      return `sheet-data-${sheetId}-${sheetName || 'default'}`;
+    }
+
+    function setStatus(text, isError = false) {
+      status.textContent = text;
+      status.style.color = isError ? '#b45309' : '#0f172a';
+    }
+
+    function loadLocalData() {
+      const saved = localStorage.getItem(buildKey());
+      if (!saved) return false;
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.headers && parsed.rows) {
+          headers = parsed.headers;
+          rows = parsed.rows;
+          return true;
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+      return false;
+    }
+
+    function saveLocalData() {
+      localStorage.setItem(buildKey(), JSON.stringify({ headers, rows }));
+      setStatus('Değişiklikler yerel olarak kaydedildi.');
+    }
+
+    function resetLocalData() {
+      localStorage.removeItem(buildKey());
+      setStatus('Yerel düzenlemeler sıfırlandı. Sayfayı yeniden yükleyin.');
+    }
+
+    function exportToCsv() {
+      const csvRows = [headers.join(',')];
+      rows.forEach(row => {
+        csvRows.push(row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','));
+      });
+      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'sheet-verisi.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function renderTable() {
+      if (!headers.length) {
+        dataContainer.innerHTML = '<p style="color:#475569">Yüklenecek veri yok.</p>';
+        return;
+      }
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h || 'Boş';
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      rows.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        row.forEach((cell, colIndex) => {
+          const td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.innerText = cell;
+          td.addEventListener('input', () => {
+            rows[rowIndex][colIndex] = td.innerText;
+          });
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      dataContainer.innerHTML = '';
+      dataContainer.appendChild(table);
+    }
+
+    function parseGvizResponse(text) {
+      const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!jsonText) return null;
+      return JSON.parse(jsonText[1]);
+    }
+
+    function normalizeValue(cell) {
+      if (!cell) return '';
+      if (cell.formattedValue !== undefined) return cell.formattedValue;
+      if (cell.v !== undefined) return cell.v;
+      return '';
+    }
+
+    function buildRowsFromGoogle(data) {
+      const cols = data.table.cols.map(col => col.label || col.id || 'Kolon');
+      const resultRows = data.table.rows.map(row => {
+        return row.c.map(cell => normalizeValue(cell));
+      });
+      return { cols, resultRows };
+    }
+
+    async function loadSheet() {
+      setStatus('Yükleniyor...');
+      const url = sheetUrlInput.value.trim();
+      const parsedId = parseSheetId(url);
+      if (!parsedId) {
+        setStatus('Geçerli bir Google Sheet URL’si girin.', true);
+        return;
+      }
+      sheetId = parsedId;
+      const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+      try {
+        const response = await fetch(fetchUrl);
+        if (!response.ok) {
+          setStatus('Google Sheet yüklenemedi. Sheet herkese açık olmalı.', true);
+          return;
+        }
+        const text = await response.text();
+        const parsed = parseGvizResponse(text);
+        if (!parsed) {
+          setStatus('Google Sheet verisi beklenmedik formatta geldi.', true);
+          return;
+        }
+        const tableData = buildRowsFromGoogle(parsed);
+        headers = tableData.cols;
+        rows = tableData.resultRows;
+        if (!loadLocalData()) {
+          // keep loaded values from sheet if no local data
+        }
+        tableCard.style.display = 'block';
+        renderTable();
+        setStatus(`Sheet başarıyla yüklendi. ${rows.length} satır bulundu.`);
+      } catch (error) {
+        console.error(error);
+        setStatus('Veri yükleme sırasında hata oluştu. Konsolu kontrol edin.', true);
+      }
+    }
+
+    loadButton.addEventListener('click', loadSheet);
+    saveButton.addEventListener('click', () => {
+      if (!sheetId) {
+        setStatus('Önce Google Sheet yükleyin.', true);
+        return;
+      }
+      saveLocalData();
+    });
+    exportButton.addEventListener('click', () => {
+      if (!headers.length) {
+        setStatus('Önce veri yükleyin.', true);
+        return;
+      }
+      exportToCsv();
+    });
+    addRowButton.addEventListener('click', () => {
+      if (!headers.length) {
+        setStatus('Önce veri yükleyin.', true);
+        return;
+      }
+      rows.push(headers.map(() => ''));
+      renderTable();
+      setStatus('Yeni satır eklendi.');
+    });
+    resetButton.addEventListener('click', () => {
+      if (!sheetId) {
+        setStatus('Önce Google Sheet yükleyin.', true);
+        return;
+      }
+      resetLocalData();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+[
+  {
+    "name": "Bcekmece Excel Notlar",
+    "url": "https://docs.google.com/spreadsheets/d/19JVtLwp-GL1hVildtpAdBar9B-Qwy9lb3NoesLJCuXw/edit?gid=1386844648#gid=1386844648",
+    "description": "Büyükçekmece için Excel notları içeren Google Sheet.",
+    "category": "Notlar",
+    "favorite": true
+  },
+  {
+    "name": "Bcekmece Notlar",
+    "url": "https://docs.google.com/document/d/1Qt7v0BBhHq_nDBtEf5MqZHQNQshvmsPN5NPjfpSYBrk/edit?tab=t.0",
+    "description": "Büyükçekmece notlarının bulunduğu Google Doküman.",
+    "category": "Notlar",
+    "favorite": true
+  },
+  {
+    "name": "Flexty",
+    "url": "https://fc.bcekmece.bel.tr/FlexCityUi/#!emasa",
+    "description": "Büyükçekmece Belediyesi Flexty yönetim paneli.",
+    "category": "Kamu Kurumu Standardizasyonu",
+    "favorite": true
+  },
+  {
+    "name": "BÜÇEK - Logo Kullanım Kılavuzu",
+    "url": "https://www.bcekmece.bel.tr/upload/241128133638_bu-c-ek-logo-kullanim-kilavuzu-1-1.pdf",
+    "description": "Büyükçekmece Belediyesi logo kullanım kılavuzu.",
+    "category": "Kamu Kurumu Standardizasyonu"
+  },
+  {
+    "name": "KAMİS - TÜBİTAK BİLGEM",
+    "url": "https://bilgem.tubitak.gov.tr/yte/kamis/",
+    "description": "Kamu kurumları için TÜBİTAK BİLGEM KAMİS standardizasyonu.",
+    "category": "Kamu Kurumu Standardizasyonu"
+  },
+  {
+    "name": "Festival Beta",
+    "url": "https://festival.bcekmece.bel.tr/Panel/yonetim/login",
+    "description": "Festival Beta yönetim giriş sayfası.",
+    "category": "Büyükçekmece Siteler"
+  },
+  {
+    "name": "Bcekmece Afet",
+    "url": "https://bakutacil.bcekmece.bel.tr/abis/#disaster-title",
+    "description": "Büyükçekmece afet yönetimi acil müdahale sistemi.",
+    "category": "Kamu Kurumu Standardizasyonu"
+  },
+  {
+    "name": "Turizm Rehber",
+    "url": "https://keos.bcekmece.bel.tr/turizm/?travel",
+    "description": "Büyükçekmece turizm rehber web uygulaması.",
+    "category": "Büyükçekmece Siteler"
+  },
+  {
+    "name": "Outlook Mail",
+    "url": "https://mail.bcekmece.bel.tr/owa/#path=/mail",
+    "description": "Büyükçekmece mail sistemine hızlı erişim.",
+    "category": "Büyükçekmece Siteler",
+    "favorite": true
+  },
+  {
+    "name": "TTS",
+    "url": "https://portal.betabt.com/TTS/Secure/login",
+    "description": "TTS güvenli giriş sayfası.",
+    "category": "Kamu Kurumu Standardizasyonu"
+  },
+  {
+    "name": "Şifre Değiştirme",
+    "url": "https://adssp.bcekmece.bel.tr/authorization.do",
+    "description": "Büyükçekmece şifre değiştirme ekranı.",
+    "category": "Kamu Kurumu Standardizasyonu"
+  },
+  {
+    "name": "Vispeahen UI",
+    "url": "http://172.22.200.223/vispeahen/ui",
+    "description": "Vispeahen kullanıcı arayüzü ana sayfası.",
+    "category": "Vispeahen"
+  },
+  {
+    "name": "Vispeahen Dashboard",
+    "url": "http://172.22.200.223/vispeahen/ui/dashboard/69d5ffa62affa14d88b18ad9?labelId=69a932412affa14d88b1899d",
+    "description": "Vispeahen özel dashboard bağlantısı.",
+    "category": "Vispeahen"
+  },
+  {
+    "name": "Vispeahen Doküman",
+    "url": "https://learn.vispeahen.com/grafikler/buton-filtre",
+    "description": "Vispeahen grafik ve doküman sayfası.",
+    "category": "Vispeahen"
+  },
+  {
+    "name": "Vispeahen View",
+    "url": "https://v3.vispeahen.com/vispeahen/ui/login",
+    "description": "Vispeahen kullanıcı giriş sayfası.",
+    "category": "Vispeahen"
+  },
+  {
+    "name": "Festival Yayındaki",
+    "url": "https://festival.bcekmece.bel.tr/",
+    "description": "Festival Beta canlı yayındaki front-end sitesi.",
+    "category": "Büyükçekmece Siteler",
+    "favorite": true
+  },
+  {
+    "name": "Ulakbel",
+    "url": "https://ulakbel.bcekmece.bel.tr/home#/",
+    "description": "Ulakbel Büyükçekmece portalı.",
+    "category": "Büyükçekmece Siteler",
+    "favorite": true
+  },
+  {
+    "name": "Örnek Hızlı Bağlantı",
+    "url": "https://example.com/",
+    "description": "Sık kullanılan ve her zaman açılacak olarak işaretlenmiş örnek kayıt.",
+    "category": "Büyükçekmece Siteler",
+    "favorite": true,
+    "alwaysOpen": true
+  }
+]
