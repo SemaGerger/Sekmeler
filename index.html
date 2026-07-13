@@ -101,6 +101,30 @@
     </div>
   </div>
 
+  <!-- Always-Open Prompt Modal -->
+  <div id="always-open-overlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal-panel" style="max-width: 480px; transform: scale(0.95);">
+      <div class="modal-header">
+        <h3 class="modal-title">Başlangıç Siteleri Hazır!</h3>
+        <button type="button" class="modal-close" id="always-open-close" aria-label="Kapat">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 24px; background: var(--bg-secondary); min-height: auto; display: flex; flex-direction: column; gap: 16px;">
+        <p style="color: var(--text-secondary); line-height: 1.6; margin: 0; font-size: 0.95rem;" id="always-open-text">
+          Her zaman açılacak olan siteleriniz algılandı. Bu siteleri yeni sekmelerde toplu olarak açmak ister misiniz?
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; width: 100%;">
+          <button id="always-open-cancel" class="btn btn-secondary" style="padding: 10px 18px; font-size: 0.9rem;">Daha Sonra</button>
+          <button id="always-open-confirm" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.9rem;">Evet, Hepsini Aç</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script>
@@ -115,6 +139,12 @@
     const previewNote = document.getElementById('preview-note');
     const previewFrame = document.getElementById('preview-frame');
     const openAlwaysOpenButton = document.getElementById('open-alwaysopen');
+
+    const alwaysOpenOverlay = document.getElementById('always-open-overlay');
+    const alwaysOpenText = document.getElementById('always-open-text');
+    const alwaysOpenClose = document.getElementById('always-open-close');
+    const alwaysOpenCancel = document.getElementById('always-open-cancel');
+    const alwaysOpenConfirm = document.getElementById('always-open-confirm');
 
     const siteConfig = window.siteConfig || {};
     const googleSheetId = siteConfig.googleSheetId || '';
@@ -207,11 +237,43 @@
         });
     }
 
+    function triggerAlwaysOpenPrompt() {
+      const alwaysOpenSites = sites.filter(site => site.alwaysOpen);
+      if (alwaysOpenSites.length === 0) return;
+
+      // Only prompt once per browser session
+      if (sessionStorage.getItem('always_open_prompt_triggered') === 'true') return;
+
+      alwaysOpenText.innerHTML = `<strong>Her Zaman Açılacak</strong> olarak işaretlenmiş <strong>${alwaysOpenSites.length}</strong> adet başlangıç adresi bulundu. Bu siteleri şimdi yeni sekmelerde toplu olarak açmak ister misiniz?`;
+      
+      alwaysOpenOverlay.classList.add('active');
+      alwaysOpenOverlay.setAttribute('aria-hidden', 'false');
+
+      const closeModal = () => {
+        alwaysOpenOverlay.classList.remove('active');
+        alwaysOpenOverlay.setAttribute('aria-hidden', 'true');
+        sessionStorage.setItem('always_open_prompt_triggered', 'true');
+      };
+
+      alwaysOpenClose.onclick = closeModal;
+      alwaysOpenCancel.onclick = closeModal;
+
+      alwaysOpenConfirm.onclick = () => {
+        alwaysOpenSites.forEach(site => {
+          window.open(site.url, '_blank', 'noopener');
+        });
+        closeModal();
+      };
+    }
+
     function maybeInitialize() {
       if (!sitesLoaded) return;
       populateCategoryList();
       renderSites(sites);
       updateOpenAlwaysOpenButton();
+      
+      // Auto trigger popup for alwaysOpen sites on first load
+      triggerAlwaysOpenPrompt();
     }
 
     function selectCategory(category) {
@@ -256,11 +318,12 @@
 
     function updateOpenAlwaysOpenButton() {
       const alwaysOpenCount = sites.filter(site => site.alwaysOpen).length;
-      openAlwaysOpenButton.style.display = selectedCategory === 'Her Zaman Açılacaklar' && alwaysOpenCount > 0 ? 'inline-flex' : 'none';
+      // Button is always visible if alwaysOpen count > 0, offering constant one-click access
+      openAlwaysOpenButton.style.display = alwaysOpenCount > 0 ? 'inline-flex' : 'none';
     }
 
     function openAllAlwaysOpen() {
-      const alwaysOpenSites = filterSites();
+      const alwaysOpenSites = sites.filter(site => site.alwaysOpen);
       if (!alwaysOpenSites.length) {
         return;
       }

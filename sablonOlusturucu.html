@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sekmeler - Şablon Oluşturucu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container fade-in">
+    <!-- Shared Navigation -->
+    <div id="navbar-container"></div>
+
+    <header class="page-header">
+      <h1 class="page-title">Ulakbel Şablon Oluşturucu</h1>
+      <p class="page-subtitle">Ulakbel duyuruları için şablon seçin, metin/görselleri girin ve canlı önizleme üzerinden son HTML kodunu kopyalayın.</p>
+    </header>
+
+    <!-- Status Alert -->
+    <div id="status" class="alert" style="display:none;"></div>
+
+    <!-- Workspace Layout -->
+    <div class="detail-view">
+      <!-- Left Column: Template Selector & Live Preview -->
+      <div class="detail-pane fade-in" style="display: flex; flex-direction: column; gap: 20px;">
+        <div>
+          <label for="template-select" class="input-label">Şablon Seçin</label>
+          <select id="template-select" class="input-control" style="font-weight: 600;">
+            <option value="">Şablonlar Yükleniyor...</option>
+          </select>
+        </div>
+
+        <div>
+          <h3>Canlı Önizleme</h3>
+          <div id="live-preview-container" class="card-group" style="background: #ffffff; color: #000000; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; min-height: 350px; margin-top: 12px; overflow: auto; max-width: 100%;">
+            Şablon seçilmedi. Lütfen yukarıdaki menüden bir şablon seçin.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Dynamic Form Fields & Generated Output -->
+      <div class="detail-pane fade-in" style="display: flex; flex-direction: column; gap: 24px;">
+        <div>
+          <h3>Şablon Değişkenleri</h3>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
+            Aşağıdaki alanları doldurarak şablon içeriğini özelleştirin. Canlı önizleme eşzamanlı olarak güncellenecektir.
+          </p>
+          <div id="dynamic-inputs-container" style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- Fields generated dynamically by JS -->
+            <p style="color: var(--text-tertiary); font-style: italic;">Şablon seçildiğinde doldurulabilir alanlar burada listelenecektir.</p>
+          </div>
+        </div>
+
+        <!-- HTML Code Output -->
+        <div id="output-code-section" style="display:none;">
+          <h3>Oluşturulan HTML Kodu</h3>
+          <div class="code-container">
+            <button id="copy-html-btn" class="code-copy-btn" type="button">HTML Kopyala</button>
+            <pre id="output-code-block" class="code-block"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="card-group" style="text-align: center; padding: 40px 20px;">
+      <div class="skeleton-loader">
+        <div class="skeleton-line" style="width: 25%"></div>
+        <div class="skeleton-line" style="width: 75%"></div>
+        <div class="skeleton-line" style="width: 50%"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    const loading = document.getElementById('loading');
+    const templateSelect = document.getElementById('template-select');
+    const dPreview = document.getElementById('live-preview-container');
+    const dInputsContainer = document.getElementById('dynamic-inputs-container');
+    const dCodeSection = document.getElementById('output-code-section');
+    const dCodeBlock = document.getElementById('output-code-block');
+    const copyHtmlBtn = document.getElementById('copy-html-btn');
+
+    const siteConfig = window.siteConfig || {};
+    const googleSheetId = siteConfig.googleSheetId || '';
+    const googlePreviewTab = siteConfig.googlePreviewTab || '';
+
+    let allItems = [];
+    let activeItem = null;
+
+    function setStatus(message, isError = false) {
+      if (!message) {
+        status.style.display = 'none';
+        return;
+      }
+      status.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>${message}</span>
+      `;
+      status.className = isError ? 'alert alert-warning fade-in' : 'alert alert-info fade-in';
+      status.style.display = 'flex';
+    }
+
+    function parseGvizResponse(text) {
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!match) return null;
+      return JSON.parse(match[1]);
+    }
+
+    function normalizeValue(cell) {
+      if (!cell) return '';
+      if (cell.formattedValue !== undefined) return cell.formattedValue;
+      if (cell.v !== undefined) return cell.v;
+      return '';
+    }
+
+    function buildPreviewRows(data) {
+      let headers = data.table.cols.map(col => (col.label || col.id || '').trim());
+      const rows = data.table.rows.map(row => row.c.map(normalizeValue));
+      const isGenericColumnLabel = value => /^[A-Z]+$/i.test(value);
+      const needsHeaderFallback = headers.length > 0 && rows.length > 0 &&
+        (headers.every(header => !header) || headers.every(header => isGenericColumnLabel(header)));
+
+      if (needsHeaderFallback) {
+        const firstRow = rows[0];
+        if (firstRow.some(cell => String(cell).trim())) {
+          headers = firstRow.map(cell => String(cell).trim());
+          rows.shift();
+        }
+      }
+
+      const rowObjects = rows.map(cells => {
+        const item = {};
+        headers.forEach((header, index) => {
+          item[header] = cells[index] != null ? cells[index] : '';
+        });
+        return item;
+      });
+      return { headers, rowObjects };
+    }
+
+    function getHeaderKey(headers, patterns) {
+      return headers.find(header => {
+        const key = header.trim().toLowerCase();
+        return patterns.some(pattern => new RegExp(pattern, 'i').test(key));
+      });
+    }
+
+    function normalizeImageUrl(url) {
+      if (!url) return '';
+      const value = String(url).trim();
+      if (/\.(png|jpe?g|gif|webp|svg)$/i.test(value)) return value;
+      const hizliMatch = value.match(/^https?:\/\/(?:www\.)?hizliresim\.com\/([A-Za-z0-9]+)(?:\/)?$/i);
+      if (hizliMatch) {
+        return `https://i.hizliresim.com/${hizliMatch[1]}.png`;
+      }
+      return value;
+    }
+
+    function updateImgSrc(tag, url) {
+      const srcPattern = /\bsrc\s*=\s*(['"])(.*?)\1/i;
+      if (srcPattern.test(tag)) {
+        return tag.replace(srcPattern, `src=$1${url}$1`);
+      }
+      return tag.replace(/<img\b/i, `<img src="${url}"`);
+    }
+
+    function decodeHtmlEntities(value) {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = String(value || '');
+      return textarea.value;
+    }
+
+    function normalizeLabelText(value) {
+      return decodeHtmlEntities(String(value || ''))
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^\w_-]+/g, '');
+    }
+
+    function getLabelImagePairs(headers) {
+      const pairs = [];
+      headers.forEach(header => {
+        const key = String(header || '').trim();
+        const normalizedKey = key.toLowerCase();
+        const match = normalizedKey.match(/^yaz[iı](s[iı])?(\d*)$/i);
+        if (!match) return;
+        const suffix = match[2] || '';
+        const imageHeader = headers.find(candidate => {
+          const candidateKey = String(candidate || '').trim().toLowerCase();
+          return new RegExp(`^g(örsel|orsel)i?${suffix}$`, 'i').test(candidateKey);
+        });
+        if (imageHeader) {
+          pairs.push({ labelKey: key, imageKey: imageHeader });
+        }
+      });
+      return pairs;
+    }
+
+    function replaceImageByLabelPairs(html, pairs) {
+      if (!Array.isArray(pairs) || !pairs.length) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        for (const pair of pairs) {
+          const labelText = normalizeLabelText(pair.label);
+          if (!labelText || !pair.src) continue;
+          if (altText === labelText || altText.includes(labelText) || labelText.includes(altText)) {
+            return updateImgSrc(tag, pair.src);
+          }
+        }
+        return tag;
+      });
+    }
+
+    function replaceLogoInHtml(html, logoUrl, logoLabel) {
+      if (!logoUrl || !logoLabel) return html;
+      const normalizedLabel = normalizeLabelText(logoLabel);
+      if (!normalizedLabel) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        if (altText === normalizedLabel || altText.includes(normalizedLabel) || normalizedLabel.includes(altText)) {
+          return updateImgSrc(tag, logoUrl);
+        }
+        return tag;
+      });
+    }
+
+    function replaceGorselInHtml(html, imageUrl, imageLabel) {
+      if (!imageUrl || !imageLabel) return html;
+      const normalizedLabel = normalizeLabelText(imageLabel);
+      if (!normalizedLabel) return html;
+      return html.replace(/<img\b[^>]*>/gi, tag => {
+        const altMatch = /\balt\s*=\s*(['"])(.*?)\1/i.exec(tag);
+        if (!altMatch) return tag;
+        const altText = normalizeLabelText(altMatch[2]);
+        if (altText === normalizedLabel || altText.includes(normalizedLabel) || normalizedLabel.includes(altText)) {
+          return updateImgSrc(tag, imageUrl);
+        }
+        return tag;
+      });
+    }
+
+    function renderableHtml(html, item) {
+      if (!html) return html;
+      let result = html;
+      result = replaceImageByLabelPairs(result, item.labelImagePairs || []);
+      result = replaceLogoInHtml(result, item.logoSrc, item.logoLabel);
+      result = replaceGorselInHtml(result, item.imageSrc, item.imageLabel);
+      const replacements = [
+        { regex: /\{\{\s*logo\s*\}\}/gi, value: item.logoSrc || '' },
+        { regex: /\{\{\s*logo[_-]?url\s*\}\}/gi, value: item.logoSrc || '' },
+        { regex: /\{\{\s*image\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*gorsel\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*img\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*photo\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*category\s*\}\}/gi, value: item.category || '' },
+        { regex: /\{\{\s*title\s*\}\}/gi, value: item.title || '' }
+      ];
+      result = replacements.reduce((resultHtml, replacement) => resultHtml.replace(replacement.regex, replacement.value), result);
+
+      // Replace custom placeholders detected dynamically
+      if (item.customValues) {
+        Object.keys(item.customValues).forEach(key => {
+          const val = item.customValues[key] || '';
+          const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+          result = result.replace(regex, val);
+        });
+      }
+      return result;
+    }
+
+    function setupCopyButton(btn, textGetter) {
+      const originalText = btn.textContent;
+      btn.onclick = () => {
+        const text = textGetter();
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = 'Kopyalandı! ✓';
+          btn.style.backgroundColor = 'var(--success)';
+          btn.style.borderColor = 'var(--success-border)';
+          btn.style.color = '#ffffff';
+          setStatus('Oluşturulan kod panoya kopyalandı.');
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.backgroundColor = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+          }, 2000);
+        }).catch(() => {
+          setStatus('Kod kopyalanamadı. Lütfen tekrar deneyin.', true);
+        });
+      };
+    }
+
+    function updatePreviewAndOutput() {
+      if (!activeItem) return;
+      const finalHtml = renderableHtml(activeItem.previewHtml, activeItem);
+      dPreview.innerHTML = finalHtml;
+      dCodeBlock.textContent = finalHtml;
+    }
+
+    function generateInputs(item) {
+      dInputsContainer.innerHTML = '';
+      
+      const addInputField = (id, labelText, defaultValue, onInputFn, isMultiline = false) => {
+        const group = document.createElement('div');
+        group.style.display = 'flex';
+        group.style.flexDirection = 'column';
+        group.style.gap = '6px';
+
+        const label = document.createElement('label');
+        label.className = 'input-label';
+        label.textContent = labelText;
+        label.setAttribute('for', id);
+
+        let input;
+        if (isMultiline) {
+          input = document.createElement('textarea');
+          input.className = 'input-control';
+          input.rows = 4;
+          input.style.resize = 'vertical';
+        } else {
+          input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'input-control';
+        }
+        input.id = id;
+        input.value = defaultValue || '';
+        input.addEventListener('input', (e) => {
+          onInputFn(e.target.value);
+          updatePreviewAndOutput();
+        });
+
+        group.appendChild(label);
+        group.appendChild(input);
+        dInputsContainer.appendChild(group);
+      };
+
+      // 1. Meta / Main Inputs
+      addInputField('inp-title', 'Duyuru Başlığı (Title)', item.title, (v) => { item.title = v; });
+      addInputField('inp-category', 'Duyuru Kategorisi (Category)', item.category, (v) => { item.category = v; });
+
+      // 2. Logo Configuration
+      if (item.logoSrc || (item.previewHtml && item.previewHtml.match(/logo/i))) {
+        addInputField('inp-logo', 'Kurum Logo URL (logo)', item.logoSrc, (v) => { item.logoSrc = v; });
+        addInputField('inp-logo-lbl', 'Logo Alt Yazı Değeri (logoLabel)', item.logoLabel, (v) => { item.logoLabel = v; });
+      }
+
+      // 3. Image Configuration
+      if (item.imageSrc || (item.previewHtml && item.previewHtml.match(/(image|gorsel|img|photo)/i))) {
+        addInputField('inp-image', 'Duyuru Görsel URL (image)', item.imageSrc, (v) => { item.imageSrc = v; });
+        addInputField('inp-image-lbl', 'Duyuru Görsel Alt Yazısı (imageLabel)', item.imageLabel, (v) => { item.imageLabel = v; });
+      }
+
+      // 4. Dynamic placeholders parsing
+      const matches = Array.from((item.previewHtml || '').matchAll(/\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/gi));
+      const uniquePlaceholders = Array.from(new Set(matches.map(m => m[1].toLowerCase())));
+      const reserved = ['title', 'category', 'logo', 'logo_url', 'logo-url', 'image', 'gorsel', 'img', 'photo'];
+      
+      if (!item.customValues) {
+        item.customValues = {};
+      }
+
+      uniquePlaceholders.forEach(ph => {
+        if (reserved.includes(ph)) return;
+        if (item.customValues[ph] === undefined) {
+          item.customValues[ph] = '';
+        }
+        addInputField(`inp-custom-${ph}`, `Özel Alan Değişkeni: {{ ${ph} }}`, item.customValues[ph], (v) => {
+          item.customValues[ph] = v;
+        }, true);
+      });
+
+      // 5. Label-Image Pairs
+      if (item.labelImagePairs && item.labelImagePairs.length > 0) {
+        item.labelImagePairs.forEach((pair, idx) => {
+          addInputField(`inp-pair-lbl-${idx}`, `Görsel ${idx+1} Alt Metni (Eşleşme Anahtarı)`, pair.label, (v) => {
+            pair.label = v;
+          });
+          addInputField(`inp-pair-src-${idx}`, `Görsel ${idx+1} URL Adresi`, pair.src, (v) => {
+            pair.src = v;
+          });
+        });
+      }
+    }
+
+    templateSelect.addEventListener('change', (e) => {
+      const idx = e.target.value;
+      if (idx === "") {
+        activeItem = null;
+        dPreview.innerHTML = 'Şablon seçilmedi. Lütfen yukarıdaki menüden bir şablon seçin.';
+        dInputsContainer.innerHTML = '<p style="color: var(--text-tertiary); font-style: italic;">Şablon seçildiğinde doldurulabilir alanlar burada listelenecektir.</p>';
+        dCodeSection.style.display = 'none';
+        return;
+      }
+
+      // Clone original element so switching templates doesn't bleed edits
+      activeItem = JSON.parse(JSON.stringify(allItems[Number(idx)]));
+      
+      generateInputs(activeItem);
+      updatePreviewAndOutput();
+      dCodeSection.style.display = 'block';
+    });
+
+    async function loadTemplates() {
+      loading.style.display = 'block';
+      if (!googleSheetId) {
+        setStatus('Google Sheet ID ayarlı değil. config.js dosyasını kontrol edin.', true);
+        loading.style.display = 'none';
+        return;
+      }
+      if (!googlePreviewTab) {
+        setStatus('Google preview tab adı ayarlı değil. config.js dosyasını kontrol edin.', true);
+        loading.style.display = 'none';
+        return;
+      }
+
+      const sheetNameQuery = `&sheet=${encodeURIComponent(googlePreviewTab)}`;
+      const url = `https://docs.google.com/spreadsheets/d/${googleSheetId}/gviz/tq?tqx=out:json${sheetNameQuery}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          setStatus('Google Sheet verisi çekilemedi. Paylaşım izinlerini kontrol edin.', true);
+          loading.style.display = 'none';
+          return;
+        }
+        const text = await response.text();
+        const parsed = parseGvizResponse(text);
+        if (!parsed) {
+          setStatus('Google Sheet verisi beklenmedik formatta.', true);
+          loading.style.display = 'none';
+          return;
+        }
+
+        const { headers, rowObjects } = buildPreviewRows(parsed);
+        const titleKey = getHeaderKey(headers, ['^title$', '^name$', '^heading$', '^label$']);
+        const previewKey = getHeaderKey(headers, ['^html$', '^template$', '^content$', '^preview$', '^body$', '^message$', '^snippet$']);
+        const logoKey = getHeaderKey(headers, ['^logo$','^logo[_ ]?url$','^logourl$','^icon$','^logo-?img$']);
+        const logoLabelKey = getHeaderKey(headers, ['^yaz[iı]s[iı]\s*logo$','^logo\s*text$','^logo\s*label$','^logo\s*yaz[iı]s[iı]$']);
+        const imageKey = getHeaderKey(headers, ['^image$','^img$','^gorsel$','^görsel$','^foto$','^photo$','^picture$']);
+        const imageLabelKey = getHeaderKey(headers, ['^yaz[iı]s[iı]\s*görsel$','^yaz[iı]s[iı]\s*gorsel$','^image\s*text$','^image\s*label$','^gorsel\s*text$']);
+        const categoryKey = getHeaderKey(headers, ['^category$','^kategori$','^group$','^grup$','^type$','^label$']);
+
+        if (!previewKey) {
+          setStatus('Verilerde şablon HTML içeriği (html/template/content) barındıran kolon bulunamadı.', true);
+          loading.style.display = 'none';
+          return;
+        }
+
+        const labelImagePairs = getLabelImagePairs(headers);
+        allItems = rowObjects.map(row => ({
+          title: titleKey ? row[titleKey] : '',
+          previewHtml: previewKey ? row[previewKey] : '',
+          logoSrc: logoKey ? normalizeImageUrl(row[logoKey]) : '',
+          logoLabel: logoLabelKey ? row[logoLabelKey] : '',
+          imageSrc: imageKey ? normalizeImageUrl(row[imageKey]) : '',
+          imageLabel: imageLabelKey ? row[imageLabelKey] : '',
+          labelImagePairs: labelImagePairs.map(pair => ({
+            label: row[pair.labelKey] || '',
+            src: normalizeImageUrl(row[pair.imageKey] || '')
+          })).filter(pair => pair.label && pair.src),
+          category: categoryKey ? row[categoryKey] : ''
+        })).filter(item => item.previewHtml);
+
+        loading.style.display = 'none';
+        
+        // Populate select element options
+        templateSelect.innerHTML = '<option value="">-- Şablon Seçin --</option>';
+        allItems.forEach((item, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = item.title || `Şablon #${index + 1} (${item.category || 'Diğer'})`;
+          templateSelect.appendChild(option);
+        });
+
+        setupCopyButton(copyHtmlBtn, () => dCodeBlock.textContent);
+
+        // Preselect template if index parameter is present in URL
+        const params = new URLSearchParams(window.location.search);
+        const indexParam = params.get('index');
+        if (indexParam !== null) {
+          const idx = Number(indexParam);
+          if (!Number.isNaN(idx) && idx >= 0 && idx < allItems.length) {
+            templateSelect.value = idx;
+            // Manually trigger the select change event
+            templateSelect.dispatchEvent(new Event('change'));
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        loading.style.display = 'none';
+        setStatus('Veriler yüklenirken hata oluştu. Konsolu kontrol edin.', true);
+      }
+    }
+
+    loadTemplates();
+  </script>
+</body>
+</html>
