@@ -42,6 +42,7 @@
       box-shadow: var(--shadow-sm);
       transition: var(--transition);
       min-height: 200px;
+      cursor: pointer;
     }
     .preview-card:hover {
       transform: translateY(-2px);
@@ -64,18 +65,18 @@
       text-overflow: ellipsis;
     }
     .preview-card-body {
-      padding: 14px;
+      padding: 8px;
       background: var(--bg-secondary);
       flex: 1;
-      font-size: 0.82rem;
-      color: var(--text-secondary);
+      height: 180px;
       overflow: hidden;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
     }
     .preview-card-body > div {
       width: 100%;
+      zoom: 0.5;
     }
   </style>
 </head>
@@ -376,35 +377,11 @@
           card.appendChild(body);
         }
 
-        // Add visual action buttons at the bottom of the card
-        const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '6px';
-        actions.style.padding = '8px 12px';
-        actions.style.borderTop = '1px solid var(--border-color)';
-        actions.style.background = 'var(--bg-tertiary)';
-
-        const detailBtn = document.createElement('a');
-        detailBtn.className = 'btn btn-secondary';
-        detailBtn.style.flex = '1';
-        detailBtn.style.padding = '6px 8px';
-        detailBtn.style.fontSize = '0.78rem';
-        detailBtn.style.borderRadius = 'var(--radius-sm)';
-        detailBtn.href = `ulakbelForm-detail.html?index=${itemIndex}`;
-        detailBtn.textContent = 'Detaylar';
-
-        const creatorBtn = document.createElement('a');
-        creatorBtn.className = 'btn btn-primary';
-        creatorBtn.style.flex = '1';
-        creatorBtn.style.padding = '6px 8px';
-        creatorBtn.style.fontSize = '0.78rem';
-        creatorBtn.style.borderRadius = 'var(--radius-sm)';
-        creatorBtn.href = `sablonOlusturucu.html?index=${itemIndex}`;
-        creatorBtn.textContent = 'Oluşturucu';
-
-        actions.appendChild(detailBtn);
-        actions.appendChild(creatorBtn);
-        card.appendChild(actions);
+        card.addEventListener('click', () => {
+          if (itemIndex >= 0) {
+            window.location.href = `ulakbelForm-detail.html?index=${itemIndex}`;
+          }
+        });
 
         previews.appendChild(card);
       });

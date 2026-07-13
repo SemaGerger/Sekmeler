@@ -5,6 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sekmeler - Gönderi Detayı</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .tabs-container {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-family: var(--font-heading);
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover {
+      color: var(--text-primary);
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+  </style>
 </head>
 <body>
   <div class="app-container fade-in">
@@ -27,8 +55,14 @@
     <!-- Status Alert -->
     <div id="status" class="alert" style="display:none;"></div>
 
-    <!-- Detail Grid View -->
-    <div id="detail" style="display:none;" class="detail-view">
+    <!-- Tabs Selector -->
+    <div id="detail-tabs-nav" class="tabs-container" style="display:none;">
+      <button class="tab-btn active" id="tab-btn-detail" type="button">Şablon Detayları</button>
+      <button class="tab-btn" id="tab-btn-creator" type="button">Şablon Düzenleyici (Oluşturucu)</button>
+    </div>
+
+    <!-- Tab 1: Şablon Detayları -->
+    <div id="view-detail" style="display:none;" class="detail-view">
       <!-- Left Side: Visual View -->
       <div class="detail-pane fade-in">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
@@ -81,6 +115,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Tab 2: Şablon Düzenleyici (Oluşturucu) -->
+    <div id="view-creator" style="display:none;" class="detail-view">
+      <!-- Left Column: Inputs -->
+      <div class="detail-pane fade-in" style="display: flex; flex-direction: column; gap: 20px;">
+        <h3>Şablon Değişkenleri</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: -10px;">Aşağıdaki alanları düzenleyerek şablonu özelleştirebilirsiniz. Görselleri kendi bilgisayarınızdan da seçebilirsiniz.</p>
+        <div id="creator-inputs-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
+      </div>
+      
+      <!-- Right Column: Preview & Output -->
+      <div class="detail-pane fade-in" style="display: flex; flex-direction: column; gap: 24px;">
+        <h3>Canlı Önizleme</h3>
+        <div id="creator-preview-container" class="card-group" style="background: #ffffff; color: #000000; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; min-height: 250px; overflow: auto; max-width: 100%;"></div>
+        
+        <h3>Oluşturulan HTML Kodu</h3>
+        <div class="code-container">
+          <button id="creator-copy-btn" class="code-copy-btn" type="button">HTML Kopyala</button>
+          <pre id="creator-code-block" class="code-block"></pre>
+        </div>
+      </div>
+    </div>
     
     <!-- Loading State -->
     <div id="loading" class="card-group" style="text-align: center; padding: 40px 20px;">
@@ -97,9 +153,15 @@
   <script>
     const status = document.getElementById('status');
     const loading = document.getElementById('loading');
-    const detailContainer = document.getElementById('detail');
     
-    // Select detail nodes
+    // Tab Navigation & Views
+    const tabsNav = document.getElementById('detail-tabs-nav');
+    const viewDetail = document.getElementById('view-detail');
+    const viewCreator = document.getElementById('view-creator');
+    const tabBtnDetail = document.getElementById('tab-btn-detail');
+    const tabBtnCreator = document.getElementById('tab-btn-creator');
+
+    // Detail View nodes
     const dTitle = document.getElementById('detail-title');
     const dCatBadge = document.getElementById('detail-category-badge');
     const dPreview = document.getElementById('detail-preview-container');
@@ -115,6 +177,14 @@
     const dTitleCodeSection = document.getElementById('detail-title-code-section');
     const dTitleCodeBlock = document.getElementById('detail-title-code-block');
     const copyTitleBtn = document.getElementById('copy-title-html-btn');
+
+    // Creator View nodes
+    const creatorInputsContainer = document.getElementById('creator-inputs-container');
+    const creatorPreview = document.getElementById('creator-preview-container');
+    const creatorCodeBlock = document.getElementById('creator-code-block');
+    const creatorCopyBtn = document.getElementById('creator-copy-btn');
+
+    let activeItem = null;
 
     const siteConfig = window.siteConfig || {};
     const googleSheetId = siteConfig.googleSheetId || '';
@@ -300,21 +370,370 @@
       return replacements.reduce((resultHtml, replacement) => resultHtml.replace(replacement.regex, replacement.value), result);
     }
 
+    // --- SMART CREATOR WORKSHOP HELPERS ---
+    function replaceHtmlContents(html, titleText, editedTexts, logoUrl, imageUrl) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      const imgs = doc.querySelectorAll('img');
+      let logoImg = null;
+      let mainImg = null;
+      
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        
+        if (alt.includes('logo') || alt.includes('belediye') || alt.includes('tc') || src.includes('logo')) {
+          logoImg = img;
+        } else if (alt.includes('görsel') || alt.includes('gorsel') || alt.includes('resim') || alt.includes('main') || alt.includes('photo')) {
+          mainImg = img;
+        }
+      });
+      
+      if (imgs.length > 0) {
+        if (!logoImg && !mainImg) {
+          if (imgs.length >= 2) {
+            const firstAlt = (imgs[0].getAttribute('alt') || '').toLowerCase();
+            if (firstAlt.includes('görsel') || firstAlt.includes('gorsel')) {
+              mainImg = imgs[0];
+              logoImg = imgs[1];
+            } else {
+              logoImg = imgs[0];
+              mainImg = imgs[1];
+            }
+          } else {
+            mainImg = imgs[0];
+          }
+        }
+      }
+      
+      if (logoImg && logoUrl !== undefined) {
+        logoImg.setAttribute('src', logoUrl);
+      }
+      if (mainImg && imageUrl !== undefined) {
+        mainImg.setAttribute('src', imageUrl);
+      }
+      
+      const heading = doc.querySelector('h1, h2, h3, h4');
+      if (heading && titleText !== undefined) {
+        heading.textContent = titleText;
+      }
+      
+      if (Array.isArray(editedTexts)) {
+        let textNodeIdx = 0;
+        
+        function traverseAndReplace(node) {
+          if (['SCRIPT', 'STYLE', 'IMG', 'SVG', 'NOSCRIPT'].includes(node.nodeName)) return;
+          if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(node.nodeName)) return;
+          
+          if (node.nodeType === Node.TEXT_NODE) {
+            const txt = node.textContent.trim();
+            if (txt.length > 0) {
+              if (editedTexts[textNodeIdx] !== undefined) {
+                node.textContent = editedTexts[textNodeIdx];
+              }
+              textNodeIdx++;
+            }
+          } else {
+            for (let child of node.childNodes) {
+              traverseAndReplace(child);
+            }
+          }
+        }
+        
+        traverseAndReplace(doc.body);
+      }
+      
+      return doc.body.innerHTML;
+    }
+
+    function extractDefaultTitle(html, item) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const heading = doc.querySelector('h1, h2, h3, h4');
+      return heading ? heading.textContent.trim() : item.title || '';
+    }
+
+    function extractDefaultTexts(html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const texts = [];
+      
+      function traverse(node) {
+        if (['SCRIPT', 'STYLE', 'IMG', 'SVG', 'NOSCRIPT'].includes(node.nodeName)) return;
+        if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(node.nodeName)) return;
+        
+        if (node.nodeType === Node.TEXT_NODE) {
+          const txt = node.textContent.trim();
+          if (txt.length > 0) {
+            texts.push(txt);
+          }
+        } else {
+          for (let child of node.childNodes) {
+            traverse(child);
+          }
+        }
+      }
+      
+      traverse(doc.body);
+      return texts;
+    }
+
+    function extractDefaultLogo(html, item) {
+      if (item.logoSrc) return item.logoSrc;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const imgs = doc.querySelectorAll('img');
+      let logoSrc = '';
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        if (alt.includes('logo') || alt.includes('belediye') || alt.includes('tc') || src.includes('logo')) {
+          logoSrc = img.getAttribute('src');
+        }
+      });
+      return logoSrc;
+    }
+
+    function extractDefaultImage(html, item) {
+      if (item.imageSrc) return item.imageSrc;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const imgs = doc.querySelectorAll('img');
+      let imageSrc = '';
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        if (alt.includes('görsel') || alt.includes('gorsel') || alt.includes('resim') || alt.includes('main') || alt.includes('photo')) {
+          imageSrc = img.getAttribute('src');
+        }
+      });
+      if (!imageSrc && imgs.length > 0) {
+        imageSrc = imgs[0].getAttribute('src');
+      }
+      return imageSrc;
+    }
+
+    function renderCreatorHtml(html, item) {
+      if (!html) return html;
+      
+      // 1. DOM-based replacements
+      let result = replaceHtmlContents(html, item.editedTitle, item.editedTexts, item.editedLogo, item.editedImage);
+      
+      // 2. Placeholder text replacements
+      const replacements = [
+        { regex: /\{\{\s*logo\s*\}\}/gi, value: item.editedLogo || '' },
+        { regex: /\{\{\s*logo[_-]?url\s*\}\}/gi, value: item.editedLogo || '' },
+        { regex: /\{\{\s*image\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*gorsel\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*img\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*photo\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*category\s*\}\}/gi, value: item.category || '' },
+        { regex: /\{\{\s*title\s*\}\}/gi, value: item.editedTitle || '' }
+      ];
+      result = replacements.reduce((resultHtml, replacement) => resultHtml.replace(replacement.regex, replacement.value), result);
+
+      // 3. Custom placeholders
+      if (item.customValues) {
+        Object.keys(item.customValues).forEach(key => {
+          const val = item.customValues[key] || '';
+          const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+          result = result.replace(regex, val);
+        });
+      }
+      return result;
+    }
+
+    function generateCreatorInputs(item) {
+      creatorInputsContainer.innerHTML = '';
+      
+      const addInputField = (id, labelText, defaultValue, onInputFn, isMultiline = false, isImageUrl = false) => {
+        const group = document.createElement('div');
+        group.style.display = 'flex';
+        group.style.flexDirection = 'column';
+        group.style.gap = '6px';
+
+        const label = document.createElement('label');
+        label.className = 'input-label';
+        label.textContent = labelText;
+        label.setAttribute('for', id);
+        group.appendChild(label);
+
+        const controlRow = document.createElement('div');
+        controlRow.style.display = 'flex';
+        controlRow.style.gap = '8px';
+        controlRow.style.alignItems = 'center';
+
+        let input;
+        if (isMultiline) {
+          input = document.createElement('textarea');
+          input.className = 'input-control';
+          input.rows = 4;
+          input.style.resize = 'vertical';
+          input.style.width = '100%';
+          controlRow.appendChild(input);
+        } else {
+          input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'input-control';
+          input.style.flex = '1';
+          controlRow.appendChild(input);
+
+          if (isImageUrl) {
+            const fileLabel = document.createElement('label');
+            fileLabel.className = 'btn btn-secondary';
+            fileLabel.style.margin = '0';
+            fileLabel.style.padding = '8px 12px';
+            fileLabel.style.display = 'flex';
+            fileLabel.style.alignItems = 'center';
+            fileLabel.style.gap = '6px';
+            fileLabel.style.cursor = 'pointer';
+            fileLabel.style.fontSize = '0.85rem';
+            fileLabel.style.whiteSpace = 'nowrap';
+            fileLabel.style.borderRadius = 'var(--radius-sm)';
+            fileLabel.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              Dosya Seç
+            `;
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            fileInput.addEventListener('change', (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                  input.value = evt.target.result;
+                  onInputFn(evt.target.result);
+                  updateCreatorPreview();
+                };
+                reader.readAsDataURL(file);
+              }
+            });
+
+            fileLabel.appendChild(fileInput);
+            controlRow.appendChild(fileLabel);
+          }
+        }
+        input.id = id;
+        input.value = defaultValue || '';
+        input.addEventListener('input', (e) => {
+          onInputFn(e.target.value);
+          updateCreatorPreview();
+        });
+
+        group.appendChild(controlRow);
+        creatorInputsContainer.appendChild(group);
+      };
+
+      // Detect if logo / image tag or placeholder exists
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(item.previewHtml || '', 'text/html');
+      const imgs = doc.querySelectorAll('img');
+      let hasLogoTag = false;
+      let hasMainImageTag = false;
+      
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        
+        if (alt.includes('logo') || alt.includes('belediye') || alt.includes('tc') || src.includes('logo')) {
+          hasLogoTag = true;
+        } else if (alt.includes('görsel') || alt.includes('gorsel') || alt.includes('resim') || alt.includes('main') || alt.includes('photo')) {
+          hasMainImageTag = true;
+        }
+      });
+      
+      if (imgs.length > 0) {
+        if (!hasLogoTag && !hasMainImageTag) {
+          if (imgs.length >= 2) {
+            hasLogoTag = true;
+            hasMainImageTag = true;
+          } else {
+            hasMainImageTag = true;
+          }
+        }
+      }
+
+      const rawHtml = (item.previewHtml || '').toLowerCase();
+      const hasLogoPlaceholder = rawHtml.includes('{{logo') || rawHtml.includes('{{ logo');
+      const hasImagePlaceholder = rawHtml.includes('{{image') || rawHtml.includes('{{ image') || rawHtml.includes('{{gorsel') || rawHtml.includes('{{ gorsel') || rawHtml.includes('{{img') || rawHtml.includes('{{ img');
+
+      const showLogoInput = hasLogoTag || hasLogoPlaceholder;
+      const showImageInput = hasMainImageTag || hasImagePlaceholder;
+
+      if (showLogoInput) {
+        addInputField('inp-logo', 'Logo Görsel URL', item.editedLogo, (v) => { item.editedLogo = v; }, false, true);
+      }
+      if (showImageInput) {
+        addInputField('inp-image', 'Ana Görsel URL', item.editedImage, (v) => { item.editedImage = v; }, false, true);
+      }
+      addInputField('inp-title', 'Başlık Metni', item.editedTitle, (v) => { item.editedTitle = v; }, false, false);
+
+      if (Array.isArray(item.editedTexts)) {
+        item.editedTexts.forEach((textVal, textIdx) => {
+          addInputField(`inp-desc-${textIdx}`, `Açıklama / Metin Alanı ${textIdx + 1}`, textVal, (v) => {
+            item.editedTexts[textIdx] = v;
+          }, true, false);
+        });
+      }
+
+      const matches = Array.from((item.previewHtml || '').matchAll(/\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/gi));
+      const uniquePlaceholders = Array.from(new Set(matches.map(m => m[1].toLowerCase())));
+      const reserved = ['title', 'category', 'logo', 'logo_url', 'logo-url', 'image', 'gorsel', 'img', 'photo'];
+      
+      let hasCustomFields = false;
+      uniquePlaceholders.forEach(ph => {
+        if (reserved.includes(ph)) return;
+        if (!hasCustomFields) {
+          const subTitle = document.createElement('h4');
+          subTitle.style.marginTop = '12px';
+          subTitle.style.borderTop = '1px solid var(--border-color)';
+          subTitle.style.paddingTop = '12px';
+          subTitle.textContent = 'Şablona Özel Değişkenler';
+          creatorInputsContainer.appendChild(subTitle);
+          hasCustomFields = true;
+        }
+        
+        if (!item.customValues) {
+          item.customValues = {};
+        }
+        if (item.customValues[ph] === undefined) {
+          item.customValues[ph] = '';
+        }
+        addInputField(`inp-custom-${ph}`, `Özel Alan: {{ ${ph} }}`, item.customValues[ph], (v) => {
+          item.customValues[ph] = v;
+        }, true);
+      });
+    }
+
+    function updateCreatorPreview() {
+      if (!activeItem) return;
+      const finalHtml = renderCreatorHtml(activeItem.previewHtml, activeItem);
+      creatorPreview.innerHTML = finalHtml;
+      creatorCodeBlock.textContent = finalHtml;
+    }
+
     function getQueryIndex() {
       const params = new URLSearchParams(window.location.search);
       const indexParam = params.get('index');
       return indexParam !== null ? Number(indexParam) : NaN;
     }
 
-    function setupCopyButton(btn, text) {
+    function setupCopyButton(btn, textOrFn) {
       const originalText = btn.textContent;
       btn.onclick = () => {
+        const text = typeof textOrFn === 'function' ? textOrFn() : textOrFn;
         navigator.clipboard.writeText(text).then(() => {
           btn.textContent = 'Kopyalandı! ✓';
           btn.style.backgroundColor = 'var(--success)';
           btn.style.borderColor = 'var(--success-border)';
           btn.style.color = '#ffffff';
-          setStatus('Kaynak kodu panoya kopyalandı.');
+          setStatus('İçerik panoya kopyalandı.');
           setTimeout(() => {
             btn.textContent = originalText;
             btn.style.backgroundColor = '';
@@ -322,9 +741,30 @@
             btn.style.color = '';
           }, 2000);
         }).catch(() => {
-          setStatus('Kod kopyalanamadı. Lütfen tekrar deneyin.', true);
+          setStatus('Kopyalanamadı. Lütfen tekrar deneyin.', true);
         });
       };
+    }
+
+    function setupTabs() {
+      tabBtnDetail.addEventListener('click', () => {
+        tabBtnDetail.classList.add('active');
+        tabBtnCreator.classList.remove('active');
+        viewDetail.style.display = 'grid';
+        viewCreator.style.display = 'none';
+      });
+
+      tabBtnCreator.addEventListener('click', () => {
+        tabBtnCreator.classList.add('active');
+        tabBtnDetail.classList.remove('active');
+        viewCreator.style.display = 'grid';
+        viewDetail.style.display = 'none';
+        
+        if (activeItem) {
+          generateCreatorInputs(activeItem);
+          updateCreatorPreview();
+        }
+      });
     }
 
     function renderDetail(item) {
@@ -374,8 +814,10 @@
         dTitleCodeSection.style.display = 'none';
       }
 
-      // Render detail view block
-      detailContainer.style.display = 'grid';
+      // Show container and tabs navigation
+      tabsNav.style.display = 'flex';
+      viewDetail.style.display = 'grid';
+      viewCreator.style.display = 'none';
     }
 
     async function loadDetail() {
@@ -449,7 +891,21 @@
         }
 
         loading.style.display = 'none';
-        renderDetail(items[rowIndex]);
+        
+        const currentItem = items[rowIndex];
+        activeItem = JSON.parse(JSON.stringify(currentItem));
+        activeItem.customValues = {};
+        
+        // Extract default values for creator tab
+        activeItem.editedTitle = extractDefaultTitle(currentItem.previewHtml, currentItem);
+        activeItem.editedTexts = extractDefaultTexts(currentItem.previewHtml);
+        activeItem.editedLogo = extractDefaultLogo(currentItem.previewHtml, currentItem);
+        activeItem.editedImage = extractDefaultImage(currentItem.previewHtml, currentItem);
+        
+        setupTabs();
+        setupCopyButton(creatorCopyBtn, () => creatorCodeBlock.textContent);
+        
+        renderDetail(currentItem);
       } catch (error) {
         console.error(error);
         loading.style.display = 'none';

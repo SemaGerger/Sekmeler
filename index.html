@@ -80,26 +80,7 @@
     </div>
   </div>
 
-  <!-- Preview Iframe Modal -->
-  <div id="preview-overlay" class="modal-overlay" aria-hidden="true">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <div>
-          <h3 class="modal-title" id="preview-title">Site Önizleme</h3>
-          <p class="modal-subtitle" id="preview-note">Bazı siteler güvenlik politikaları (X-Frame-Options) nedeniyle önizlenemeyebilir.</p>
-        </div>
-        <button type="button" class="modal-close" data-close="true" aria-label="Kapat">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <iframe id="preview-frame" class="modal-iframe" src="about:blank" title="Site önizleme"></iframe>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Always-Open Prompt Modal -->
   <div id="always-open-overlay" class="modal-overlay" aria-hidden="true">
@@ -134,10 +115,7 @@
     const siteCount = document.getElementById('site-count');
     const searchInput = document.getElementById('search');
     const categoryList = document.getElementById('category-list');
-    const overlay = document.getElementById('preview-overlay');
-    const previewTitle = document.getElementById('preview-title');
-    const previewNote = document.getElementById('preview-note');
-    const previewFrame = document.getElementById('preview-frame');
+
     const openAlwaysOpenButton = document.getElementById('open-alwaysopen');
 
     const alwaysOpenOverlay = document.getElementById('always-open-overlay');
@@ -364,19 +342,7 @@
       }
     }
 
-    function canPreviewSite(site) {
-      const blocked = [
-        'docs.google.com',
-        'spreadsheets.google.com',
-        'drive.google.com',
-        'view.officeapps.live.com',
-        'mail.bcekmece.bel.tr',
-        'adssp.bcekmece.bel.tr',
-        'learn.vispeahen.com'
-      ];
-      const normalized = site.url.toLowerCase();
-      return !blocked.some(block => normalized.includes(block));
-    }
+
 
     function createCard(site) {
       const card = document.createElement('li');
@@ -435,22 +401,6 @@
         </svg>
       `;
 
-      const previewButton = document.createElement('button');
-      previewButton.className = 'btn btn-secondary';
-      previewButton.type = 'button';
-      previewButton.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="16"></line>
-          <line x1="8" y1="12" x2="16" y2="12"></line>
-        </svg>
-        Önizle
-      `;
-      if (canPreviewSite(site)) {
-        previewButton.addEventListener('click', () => openPreview(site));
-        actions.appendChild(previewButton);
-      }
-
       actions.appendChild(openButton);
       card.appendChild(actions);
 
@@ -501,24 +451,7 @@
       updateCounts();
     }
 
-    function openPreview(site) {
-      previewTitle.textContent = `${site.name} Önizlemesi`;
-      previewFrame.src = site.url;
-      overlay.classList.add('active');
-      overlay.setAttribute('aria-hidden', 'false');
-    }
 
-    function closePreview() {
-      overlay.classList.remove('active');
-      overlay.setAttribute('aria-hidden', 'true');
-      previewFrame.src = 'about:blank';
-    }
-
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay || event.target.closest('[data-close]')) {
-        closePreview();
-      }
-    });
 
     function initializeQuickFilters() {
       document.querySelectorAll('.pill').forEach(button => {

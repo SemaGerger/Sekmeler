@@ -252,25 +252,144 @@
       });
     }
 
+    function replaceHtmlContents(html, titleText, descText, logoUrl, imageUrl) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      const imgs = doc.querySelectorAll('img');
+      let logoImg = null;
+      let mainImg = null;
+      
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        
+        if (alt.includes('logo') || alt.includes('belediye') || alt.includes('tc') || src.includes('logo')) {
+          logoImg = img;
+        } else if (alt.includes('görsel') || alt.includes('gorsel') || alt.includes('resim') || alt.includes('main') || alt.includes('photo')) {
+          mainImg = img;
+        }
+      });
+      
+      if (imgs.length > 0) {
+        if (!logoImg && !mainImg) {
+          if (imgs.length >= 2) {
+            const firstAlt = (imgs[0].getAttribute('alt') || '').toLowerCase();
+            if (firstAlt.includes('görsel') || firstAlt.includes('gorsel')) {
+              mainImg = imgs[0];
+              logoImg = imgs[1];
+            } else {
+              logoImg = imgs[0];
+              mainImg = imgs[1];
+            }
+          } else {
+            mainImg = imgs[0];
+          }
+        }
+      }
+      
+      if (logoImg && logoUrl) {
+        logoImg.setAttribute('src', logoUrl);
+      }
+      if (mainImg && imageUrl) {
+        mainImg.setAttribute('src', imageUrl);
+      }
+      
+      const heading = doc.querySelector('h1, h2, h3, h4');
+      if (heading && titleText) {
+        heading.textContent = titleText;
+      }
+      
+      if (descText) {
+        const paragraphs = doc.querySelectorAll('p');
+        if (paragraphs.length > 0) {
+          paragraphs[paragraphs.length - 1].textContent = descText;
+        } else {
+          const divs = Array.from(doc.querySelectorAll('div'));
+          const textDivs = divs.filter(d => d.children.length === 0 && d.textContent.trim().length > 0);
+          if (textDivs.length > 0) {
+            textDivs[textDivs.length - 1].textContent = descText;
+          }
+        }
+      }
+      
+      return doc.body.innerHTML;
+    }
+
+    function extractDefaultTitle(html, item) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const heading = doc.querySelector('h1, h2, h3, h4');
+      return heading ? heading.textContent.trim() : item.title || '';
+    }
+
+    function extractDefaultDescription(html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const paragraphs = doc.querySelectorAll('p');
+      if (paragraphs.length > 0) {
+        return paragraphs[paragraphs.length - 1].textContent.trim();
+      }
+      const divs = Array.from(doc.querySelectorAll('div'));
+      const textDivs = divs.filter(d => d.children.length === 0 && d.textContent.trim().length > 0);
+      return textDivs.length > 0 ? textDivs[textDivs.length - 1].textContent.trim() : '';
+    }
+
+    function extractDefaultLogo(html, item) {
+      if (item.logoSrc) return item.logoSrc;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const imgs = doc.querySelectorAll('img');
+      let logoSrc = '';
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        if (alt.includes('logo') || alt.includes('belediye') || alt.includes('tc') || src.includes('logo')) {
+          logoSrc = img.getAttribute('src');
+        }
+      });
+      return logoSrc;
+    }
+
+    function extractDefaultImage(html, item) {
+      if (item.imageSrc) return item.imageSrc;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const imgs = doc.querySelectorAll('img');
+      let imageSrc = '';
+      imgs.forEach(img => {
+        const alt = (img.getAttribute('alt') || '').toLowerCase();
+        const src = (img.getAttribute('src') || '').toLowerCase();
+        if (alt.includes('görsel') || alt.includes('gorsel') || alt.includes('resim') || alt.includes('main') || alt.includes('photo')) {
+          imageSrc = img.getAttribute('src');
+        }
+      });
+      if (!imageSrc && imgs.length > 0) {
+        imageSrc = imgs[0].getAttribute('src');
+      }
+      return imageSrc;
+    }
+
     function renderableHtml(html, item) {
       if (!html) return html;
-      let result = html;
-      result = replaceImageByLabelPairs(result, item.labelImagePairs || []);
-      result = replaceLogoInHtml(result, item.logoSrc, item.logoLabel);
-      result = replaceGorselInHtml(result, item.imageSrc, item.imageLabel);
+      
+      // 1. Direct DOM-based replacements for visual fields
+      let result = replaceHtmlContents(html, item.editedTitle, item.editedDesc, item.editedLogo, item.editedImage);
+      
+      // 2. Direct string replacements for any curly braces placeholder
       const replacements = [
-        { regex: /\{\{\s*logo\s*\}\}/gi, value: item.logoSrc || '' },
-        { regex: /\{\{\s*logo[_-]?url\s*\}\}/gi, value: item.logoSrc || '' },
-        { regex: /\{\{\s*image\s*\}\}/gi, value: item.imageSrc || '' },
-        { regex: /\{\{\s*gorsel\s*\}\}/gi, value: item.imageSrc || '' },
-        { regex: /\{\{\s*img\s*\}\}/gi, value: item.imageSrc || '' },
-        { regex: /\{\{\s*photo\s*\}\}/gi, value: item.imageSrc || '' },
+        { regex: /\{\{\s*logo\s*\}\}/gi, value: item.editedLogo || '' },
+        { regex: /\{\{\s*logo[_-]?url\s*\}\}/gi, value: item.editedLogo || '' },
+        { regex: /\{\{\s*image\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*gorsel\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*img\s*\}\}/gi, value: item.editedImage || '' },
+        { regex: /\{\{\s*photo\s*\}\}/gi, value: item.editedImage || '' },
         { regex: /\{\{\s*category\s*\}\}/gi, value: item.category || '' },
-        { regex: /\{\{\s*title\s*\}\}/gi, value: item.title || '' }
+        { regex: /\{\{\s*title\s*\}\}/gi, value: item.editedTitle || '' }
       ];
       result = replacements.reduce((resultHtml, replacement) => resultHtml.replace(replacement.regex, replacement.value), result);
 
-      // Replace custom placeholders detected dynamically
+      // 3. Custom placeholders
       if (item.customValues) {
         Object.keys(item.customValues).forEach(key => {
           const val = item.customValues[key] || '';
@@ -313,7 +432,7 @@
     function generateInputs(item) {
       dInputsContainer.innerHTML = '';
       
-      const addInputField = (id, labelText, defaultValue, onInputFn, isMultiline = false) => {
+      const addInputField = (id, labelText, defaultValue, onInputFn, isMultiline = false, isImageUrl = false) => {
         const group = document.createElement('div');
         group.style.display = 'flex';
         group.style.flexDirection = 'column';
@@ -323,6 +442,12 @@
         label.className = 'input-label';
         label.textContent = labelText;
         label.setAttribute('for', id);
+        group.appendChild(label);
+
+        const controlRow = document.createElement('div');
+        controlRow.style.display = 'flex';
+        controlRow.style.gap = '8px';
+        controlRow.style.alignItems = 'center';
 
         let input;
         if (isMultiline) {
@@ -330,10 +455,55 @@
           input.className = 'input-control';
           input.rows = 4;
           input.style.resize = 'vertical';
+          input.style.width = '100%';
+          controlRow.appendChild(input);
         } else {
           input = document.createElement('input');
           input.type = 'text';
           input.className = 'input-control';
+          input.style.flex = '1';
+          controlRow.appendChild(input);
+
+          if (isImageUrl) {
+            // Add file picker button
+            const fileLabel = document.createElement('label');
+            fileLabel.className = 'btn btn-secondary';
+            fileLabel.style.margin = '0';
+            fileLabel.style.padding = '8px 12px';
+            fileLabel.style.display = 'flex';
+            fileLabel.style.alignItems = 'center';
+            fileLabel.style.gap = '6px';
+            fileLabel.style.cursor = 'pointer';
+            fileLabel.style.fontSize = '0.85rem';
+            fileLabel.style.whiteSpace = 'nowrap';
+            fileLabel.style.borderRadius = 'var(--radius-sm)';
+            fileLabel.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              Dosya Seç
+            `;
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            fileInput.addEventListener('change', (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                  input.value = evt.target.result;
+                  onInputFn(evt.target.result);
+                  updatePreviewAndOutput();
+                };
+                reader.readAsDataURL(file);
+              }
+            });
+
+            fileLabel.appendChild(fileInput);
+            controlRow.appendChild(fileLabel);
+          }
         }
         input.id = id;
         input.value = defaultValue || '';
@@ -342,57 +512,45 @@
           updatePreviewAndOutput();
         });
 
-        group.appendChild(label);
-        group.appendChild(input);
+        group.appendChild(controlRow);
         dInputsContainer.appendChild(group);
       };
 
-      // 1. Meta / Main Inputs
-      addInputField('inp-title', 'Duyuru Başlığı (Title)', item.title, (v) => { item.title = v; });
-      addInputField('inp-category', 'Duyuru Kategorisi (Category)', item.category, (v) => { item.category = v; });
+      // Generate the 4 main standard editable fields
+      addInputField('inp-logo', 'Logo Görsel URL', item.editedLogo, (v) => { item.editedLogo = v; }, false, true);
+      addInputField('inp-image', 'Ana Görsel URL', item.editedImage, (v) => { item.editedImage = v; }, false, true);
+      addInputField('inp-title', 'Başlık Metni', item.editedTitle, (v) => { item.editedTitle = v; }, false, false);
+      addInputField('inp-desc', 'Açıklama / Alt Metin', item.editedDesc, (v) => { item.editedDesc = v; }, true, false);
 
-      // 2. Logo Configuration
-      if (item.logoSrc || (item.previewHtml && item.previewHtml.match(/logo/i))) {
-        addInputField('inp-logo', 'Kurum Logo URL (logo)', item.logoSrc, (v) => { item.logoSrc = v; });
-        addInputField('inp-logo-lbl', 'Logo Alt Yazı Değeri (logoLabel)', item.logoLabel, (v) => { item.logoLabel = v; });
-      }
-
-      // 3. Image Configuration
-      if (item.imageSrc || (item.previewHtml && item.previewHtml.match(/(image|gorsel|img|photo)/i))) {
-        addInputField('inp-image', 'Duyuru Görsel URL (image)', item.imageSrc, (v) => { item.imageSrc = v; });
-        addInputField('inp-image-lbl', 'Duyuru Görsel Alt Yazısı (imageLabel)', item.imageLabel, (v) => { item.imageLabel = v; });
-      }
-
-      // 4. Dynamic placeholders parsing
+      // Detect and generate input fields for any other custom curly-braces placeholders in the template
       const matches = Array.from((item.previewHtml || '').matchAll(/\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/gi));
       const uniquePlaceholders = Array.from(new Set(matches.map(m => m[1].toLowerCase())));
       const reserved = ['title', 'category', 'logo', 'logo_url', 'logo-url', 'image', 'gorsel', 'img', 'photo'];
       
-      if (!item.customValues) {
-        item.customValues = {};
-      }
-
+      let hasCustomFields = false;
+      
       uniquePlaceholders.forEach(ph => {
         if (reserved.includes(ph)) return;
+        if (!hasCustomFields) {
+          const subTitle = document.createElement('h4');
+          subTitle.style.marginTop = '12px';
+          subTitle.style.borderTop = '1px solid var(--border-color)';
+          subTitle.style.paddingTop = '12px';
+          subTitle.textContent = 'Şablona Özel Değişkenler';
+          dInputsContainer.appendChild(subTitle);
+          hasCustomFields = true;
+        }
+        
+        if (!item.customValues) {
+          item.customValues = {};
+        }
         if (item.customValues[ph] === undefined) {
           item.customValues[ph] = '';
         }
-        addInputField(`inp-custom-${ph}`, `Özel Alan Değişkeni: {{ ${ph} }}`, item.customValues[ph], (v) => {
+        addInputField(`inp-custom-${ph}`, `Özel Alan: {{ ${ph} }}`, item.customValues[ph], (v) => {
           item.customValues[ph] = v;
         }, true);
       });
-
-      // 5. Label-Image Pairs
-      if (item.labelImagePairs && item.labelImagePairs.length > 0) {
-        item.labelImagePairs.forEach((pair, idx) => {
-          addInputField(`inp-pair-lbl-${idx}`, `Görsel ${idx+1} Alt Metni (Eşleşme Anahtarı)`, pair.label, (v) => {
-            pair.label = v;
-          });
-          addInputField(`inp-pair-src-${idx}`, `Görsel ${idx+1} URL Adresi`, pair.src, (v) => {
-            pair.src = v;
-          });
-        });
-      }
     }
 
     templateSelect.addEventListener('change', (e) => {
@@ -405,9 +563,16 @@
         return;
       }
 
-      // Clone original element so switching templates doesn't bleed edits
-      activeItem = JSON.parse(JSON.stringify(allItems[Number(idx)]));
+      const item = allItems[idx];
+      activeItem = JSON.parse(JSON.stringify(item));
+      activeItem.customValues = {};
       
+      // Always extract defaults from existing HTML first
+      activeItem.editedTitle = extractDefaultTitle(item.previewHtml, item);
+      activeItem.editedDesc = extractDefaultDescription(item.previewHtml);
+      activeItem.editedLogo = extractDefaultLogo(item.previewHtml, item);
+      activeItem.editedImage = extractDefaultImage(item.previewHtml, item);
+
       generateInputs(activeItem);
       updatePreviewAndOutput();
       dCodeSection.style.display = 'block';
