@@ -271,10 +271,39 @@
         else if (groupName === 'Deneme') badgeClass = 'badge-deneme';
 
         const customImg = (site.resimler || '').trim();
-        const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(site.url)}&sz=128`;
+        const domain = getDomain(site.url);
+        const googleIco = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
+        const ddgIco = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : '';
+        const directIco = domain ? `https://${domain}/favicon.ico` : '';
+
+        const clearbitLogo = domain ? `https://logo.clearbit.com/${domain}` : '';
+        const directLogoPng = domain ? `https://${domain}/logo.png` : '';
+        const directLogoSvg = domain ? `https://${domain}/logo.svg` : '';
+        const directAppleIcon = domain ? `https://${domain}/apple-touch-icon.png` : '';
+        const directFaviconPng = domain ? `https://${domain}/favicon.png` : '';
+
+        const unavatarEngine = domain ? `https://unavatar.io/${domain}` : '';
+        const directIconPng = domain ? `https://${domain}/icon.png` : '';
+        const directBannerPng = domain ? `https://${domain}/banner.png` : '';
+
         const imageContentHtml = customImg
-          ? `<img src="${customImg}" alt="${site.name} Görseli" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><span>${site.name}</span></div>'" />`
-          : `<img src="${faviconUrl}" alt="${site.name} Logosu" style="width: 54px; height: 54px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'28\\' height=\\'28\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\'><path d=\\'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\\'/><path d=\\'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\\'/></svg><span>${getDomain(site.url)}</span></div>'" />`;
+          ? `<img src="${customImg}" alt="${site.name} Görseli" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" onerror="this.onerror=null; this.src='${googleIco}';" />`
+          : `<img src="${googleIco}"
+                  alt="${site.name} Logosu"
+                  style="width: 54px; height: 54px; object-fit: contain;"
+                  onerror="
+                    if (!this.dataset.step) { this.dataset.step = '1'; this.src = '${ddgIco}'; }
+                    else if (this.dataset.step === '1') { this.dataset.step = '2'; this.src = '${directIco}'; }
+                    else if (this.dataset.step === '2') { this.dataset.step = '3'; this.src = '${clearbitLogo}'; }
+                    else if (this.dataset.step === '3') { this.dataset.step = '4'; this.src = '${directLogoPng}'; }
+                    else if (this.dataset.step === '4') { this.dataset.step = '5'; this.src = '${directLogoSvg}'; }
+                    else if (this.dataset.step === '5') { this.dataset.step = '6'; this.src = '${directAppleIcon}'; }
+                    else if (this.dataset.step === '6') { this.dataset.step = '7'; this.src = '${directFaviconPng}'; }
+                    else if (this.dataset.step === '7') { this.dataset.step = '8'; this.src = '${unavatarEngine}'; }
+                    else if (this.dataset.step === '8') { this.dataset.step = '9'; this.src = '${directIconPng}'; }
+                    else if (this.dataset.step === '9') { this.dataset.step = '10'; this.src = '${directBannerPng}'; }
+                    else { this.parentElement.innerHTML = '<div class=\\'zapp-image-placeholder\\'><span>${domain}</span></div>'; }
+                  " />`;
 
         card.innerHTML = `
           <div class="zapp-card-header">
