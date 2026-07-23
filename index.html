@@ -378,6 +378,7 @@
 
     function filterSitesAndRender() {
       const matched = filterSites();
+      matched.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
       renderSites(matched);
       updateOpenAlwaysOpenButton();
     }

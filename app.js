@@ -1,34 +1,7 @@
 (function() {
-  // Theme Management
-  const currentTheme = localStorage.getItem('theme') || 'light';
-  document.documentElement.setAttribute('data-theme', currentTheme);
-
-  function toggleTheme() {
-    const activeTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = activeTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcon(newTheme);
-  }
-
-  function updateThemeIcon(theme) {
-    const themeBtn = document.getElementById('theme-toggle');
-    if (!themeBtn) return;
-    if (theme === 'dark') {
-      themeBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-        </svg>
-      `;
-    } else {
-      themeBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-        </svg>
-      `;
-    }
-  }
+  // Always use light theme
+  document.documentElement.setAttribute('data-theme', 'light');
+  localStorage.removeItem('theme');
 
   // Helper to compute SHA-256 hash in browser
   async function computeSha256(text) {
@@ -246,6 +219,7 @@
 
     navbarContainer.innerHTML = `
       <nav class="navbar">
+        <!--
         <a href="${brandHref}" class="nav-brand">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; color: var(--primary);">
             <rect width="16" height="16" x="4" y="4" rx="2"></rect>
@@ -254,6 +228,7 @@
           </svg>
           Büyükçekmece Bilgi İşlem
         </a>
+        -->
         
         <button class="menu-toggle" id="menu-toggle" aria-label="Menüyü Aç" type="button">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -266,20 +241,10 @@
         <div class="nav-links" id="nav-links">
           ${navLinksHtml}
         </div>
-
-        <div class="nav-actions">
-          <button class="theme-toggle-btn" id="theme-toggle" type="button" aria-label="Temayı Değiştir"></button>
-        </div>
       </nav>
     `;
 
     // Event listeners
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-      updateThemeIcon(document.documentElement.getAttribute('data-theme'));
-      themeBtn.addEventListener('click', toggleTheme);
-    }
-
     const menuToggle = document.getElementById('menu-toggle');
     const navLinks = document.getElementById('nav-links');
     if (menuToggle && navLinks) {

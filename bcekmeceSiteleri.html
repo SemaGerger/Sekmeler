@@ -97,12 +97,17 @@
     }
 
     function getSiteGroup(site) {
-      const grp = (site.group || '').toLowerCase();
+      const grp = (site.group || '').trim().toLowerCase();
       if (grp.includes('deneme')) return 'Deneme';
-      const cat = (site.category || '').toLowerCase();
+      if (grp === 'k' || grp.includes('kurum') || grp.includes('kamu')) return 'Kurum';
+      if (grp === 'v' || grp.includes('vatandaş') || grp.includes('vatandas')) return 'Vatandaş';
+
+      const cat = (site.category || '').trim().toLowerCase();
       if (cat.includes('deneme')) return 'Deneme';
-      if (cat.includes('kurum') || grp.includes('kurum')) return 'Kurum';
-      return 'Vatandaş';
+      if (cat.includes('kurum') || cat.includes('kamu')) return 'Kurum';
+      if (cat.includes('vatandaş') || cat.includes('vatandas')) return 'Vatandaş';
+
+      return '';
     }
 
     function parseGoogleSheetData(text) {
@@ -131,7 +136,11 @@
           const field = headers[index];
           if (!field || !cell) return;
           const value = cell.v != null ? cell.v : (cell.f || '');
-          site[field] = String(value).trim();
+          if (field === 'favorite') {
+            site.favorite = String(value).trim().toLowerCase() === 'true' || value === true || value === 1 || String(value).trim().toLowerCase() === 'evet';
+          } else {
+            site[field] = String(value).trim();
+          }
         });
         return site;
       }).filter(site => {
@@ -143,7 +152,7 @@
     }
 
     function updateTabCounts() {
-      document.getElementById('count-all').textContent = allSites.filter(s => getSiteGroup(s) !== 'Deneme').length;
+      document.getElementById('count-all').textContent = allSites.filter(s => getSiteGroup(s) === 'Kurum' || getSiteGroup(s) === 'Vatandaş').length;
       document.getElementById('count-kurum').textContent = allSites.filter(s => getSiteGroup(s) === 'Kurum').length;
       document.getElementById('count-vatandas').textContent = allSites.filter(s => getSiteGroup(s) === 'Vatandaş').length;
       document.getElementById('count-deneme').textContent = allSites.filter(s => getSiteGroup(s) === 'Deneme').length;
@@ -178,12 +187,18 @@
       const query = searchInput.value.trim().toLowerCase();
       const filtered = allSites.filter(site => {
         const groupName = getSiteGroup(site);
-        const matchesTab = activeTab === 'Tümü' ? groupName !== 'Deneme' : groupName === activeTab;
+        const matchesTab = activeTab === 'Tümü'
+          ? (groupName === 'Kurum' || groupName === 'Vatandaş')
+          : groupName === activeTab;
         const matchesQuery = site.name.toLowerCase().includes(query) ||
           (site.description || '').toLowerCase().includes(query) ||
           site.url.toLowerCase().includes(query);
         return matchesTab && matchesQuery;
       });
+
+      // Favorilere göre sırala (Favori olanlar üstte)
+      filtered.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+
       renderGrid(filtered);
     }
 

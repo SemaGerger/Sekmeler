@@ -10,8 +10,7 @@
 </head>
 <body>
   <div class="app-container fade-in">
-    <!-- Shared Navigation (Scope isolated for Public Portal) -->
-    <div id="navbar-container"></div>
+    <!-- Navbar removed for Public Portal -->
 
  
 
@@ -137,6 +136,7 @@
         if (/^description$|^desc$|^açıklama$|^aciklama$/i.test(key)) return 'description';
         if (/^category$|^kategori$/i.test(key)) return 'category';
         if (/^group$|^grup$/i.test(key)) return 'group';
+        if (/^favorite$|^favourite$|^star$|^sık kullanıla[nı]r$|^sik kullanila[nr]lar$/i.test(key)) return 'favorite';
         if (/^karekod$|^karekodlar$|^qr$|^qrkod$|^qr[ _]?code$/i.test(key)) return 'karekod';
         if (/^resimler$|^resim$|^görsel$|^gorsel$|^image$|^img$/i.test(key)) return 'resimler';
         return null;
@@ -148,7 +148,12 @@
         row.c.forEach((cell, index) => {
           const field = headers[index];
           if (!field || !cell) return;
-          item[field] = cell.v != null ? String(cell.v).trim() : (cell.f ? String(cell.f).trim() : '');
+          const val = cell.v != null ? cell.v : (cell.f || '');
+          if (field === 'favorite') {
+            item.favorite = String(val).trim().toLowerCase() === 'true' || val === true || val === 1 || String(val).trim().toLowerCase() === 'evet';
+          } else {
+            item[field] = String(val).trim();
+          }
         });
         return item;
       }).filter(item => item.name);
@@ -159,19 +164,15 @@
       function determineGroup(item) {
         const grp = String(item.group || '').trim().toLowerCase();
         if (grp.includes('deneme')) return 'Deneme';
-        if (grp === 'k' || grp.includes('kurum')) return 'Kurum';
+        if (grp === 'k' || grp.includes('kurum') || grp.includes('kamu')) return 'Kurum';
         if (grp === 'v' || grp.includes('vatandaş') || grp.includes('vatandas')) return 'Vatandaş';
 
         const cat = String(item.category || '').trim().toLowerCase();
         if (cat.includes('deneme')) return 'Deneme';
-        if (cat.includes('kurum')) return 'Kurum';
+        if (cat.includes('kurum') || cat.includes('kamu')) return 'Kurum';
         if (cat.includes('vatandaş') || cat.includes('vatandas')) return 'Vatandaş';
 
-        const name = String(item.name || '').trim().toLowerCase();
-        if (name.includes('deneme')) return 'Deneme';
-        if (name.includes('kurum')) return 'Kurum';
-
-        return 'Vatandaş';
+        return '';
       }
 
       // Apps Map
@@ -188,6 +189,7 @@
             name: cleanName,
             description: row.description || '',
             group: determineGroup(row),
+            favorite: row.favorite || false,
             androidUrl: '',
             iosUrl: '',
             karekod: row.karekod || '',
@@ -196,6 +198,7 @@
         }
 
         const appObj = appsMap.get(cleanName);
+        if (row.favorite) appObj.favorite = true;
         if (row.karekod && !appObj.karekod) appObj.karekod = row.karekod;
         if (row.resimler && !appObj.resimler) appObj.resimler = row.resimler;
 
@@ -215,6 +218,7 @@
           url: row.url,
           description: row.description || '',
           group: determineGroup(row),
+          favorite: row.favorite || false,
           karekod: row.karekod || '',
           resimler: row.resimler || ''
         };
@@ -246,7 +250,7 @@
         return activeSection === 'sites' ? item.type === 'site' : item.type === 'app';
       });
 
-      const countAll = sectionItems.filter(i => i.group !== 'Deneme').length;
+      const countAll = sectionItems.filter(i => i.group === 'Kurum' || i.group === 'Vatandaş').length;
       const countKurum = sectionItems.filter(i => i.group === 'Kurum').length;
       const countVatandas = sectionItems.filter(i => i.group === 'Vatandaş').length;
       const countDeneme = sectionItems.filter(i => i.group === 'Deneme').length;
@@ -304,8 +308,10 @@
         // Filter by Level 1 section (sites vs apps)
         const matchesSection = activeSection === 'sites' ? item.type === 'site' : item.type === 'app';
 
-        // Filter by Level 2 sub-group (Tümü, Kurum, Vatandaş, Deneme)
-        const matchesSubGroup = activeSubGroup === 'Tümü' ? item.group !== 'Deneme' : item.group === activeSubGroup;
+        // Filter by Level 2 sub-group (Tümü: sadece Kurum/Kamu ve Vatandaş)
+        const matchesSubGroup = activeSubGroup === 'Tümü'
+          ? (item.group === 'Kurum' || item.group === 'Vatandaş')
+          : item.group === activeSubGroup;
 
         // Filter by Search Query
         const matchesQuery = item.name.toLowerCase().includes(query) ||
@@ -314,6 +320,9 @@
 
         return matchesSection && matchesSubGroup && matchesQuery;
       });
+
+      // Favorilere göre sırala (Favoriler en üste gelir)
+      filtered.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
 
       renderPortalGrid(filtered);
     }
