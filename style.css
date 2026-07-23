@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
 
 :root {
-  /* Colors */
+  /* Colors - Blue & Green Theme */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #f1f5f9;
@@ -13,10 +13,12 @@
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-light: rgba(37, 99, 235, 0.08);
-  --primary-border: rgba(37, 99, 235, 0.15);
+  --primary-border: rgba(37, 99, 235, 0.2);
   
-  --accent: #f97316;
-  --accent-light: rgba(249, 115, 22, 0.08);
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-light: rgba(5, 150, 105, 0.1);
+  --accent-border: rgba(5, 150, 105, 0.25);
   
   --success: #10b981;
   --success-light: rgba(16, 185, 129, 0.1);
@@ -45,7 +47,7 @@
   --radius-xl: 28px;
   
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --card-bg-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.95));
+  --card-bg-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.98));
 }
 
 html[data-theme="dark"] {
@@ -59,11 +61,13 @@ html[data-theme="dark"] {
   
   --primary: #3b82f6;
   --primary-hover: #2563eb;
-  --primary-light: rgba(59, 130, 246, 0.12);
+  --primary-light: rgba(59, 130, 246, 0.14);
   --primary-border: rgba(59, 130, 246, 0.3);
   
-  --accent: #fb923c;
-  --accent-light: rgba(251, 146, 60, 0.12);
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.14);
+  --accent-border: rgba(16, 185, 129, 0.3);
   
   --success: #34d399;
   --success-light: rgba(52, 211, 153, 0.12);
@@ -977,3 +981,253 @@ html[data-theme="dark"] .alert-warning {
     grid-template-columns: 1fr;
   }
 }
+
+/* Z App Styles (Ultra Compact & Popup QR Modal) */
+.zapp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 480px) {
+  .zapp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.zapp-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+}
+
+.zapp-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-border);
+}
+
+.zapp-card-header {
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.zapp-title {
+  font-family: var(--font-heading);
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zapp-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  flex-shrink: 0;
+}
+
+.zapp-badge.badge-kurum {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+
+.zapp-badge.badge-vatandas {
+  background: rgba(249, 115, 22, 0.1);
+  color: var(--accent);
+  border-color: rgba(249, 115, 22, 0.25);
+}
+
+.zapp-card-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+/* Compact Image Panel */
+.zapp-image-container {
+  width: 100%;
+  height: 110px;
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: var(--transition);
+}
+
+.zapp-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.zapp-image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 8px;
+}
+
+/* Store & QR Action Buttons */
+.zapp-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.zapp-btn-store {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: var(--transition);
+  border: 1px solid var(--border-color);
+}
+
+.zapp-btn-android {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+.zapp-btn-android:hover {
+  background: #059669;
+  color: #ffffff;
+}
+
+.zapp-btn-ios {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+.zapp-btn-ios:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.zapp-btn-qr {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.zapp-btn-qr:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+
+/* Modal QR Display Grid */
+.modal-qr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.modal-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 10px;
+}
+
+.modal-qr-box {
+  width: 140px;
+  height: 140px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.modal-qr-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.modal-qr-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-qr-title.android {
+  color: #059669;
+}
+
+.modal-qr-title.ios {
+  color: var(--primary);
+}
+
+.modal-qr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--bg-secondary) !important;
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px dashed var(--border-color);
+}
+
+

@@ -30,22 +30,229 @@
     }
   }
 
-  // Dynamic Navigation Rendering
+  // Helper to compute SHA-256 hash in browser
+  async function computeSha256(text) {
+    const msgUint8 = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Optional Password Protection Gate (SHA-256 Hash & Obfuscated srgz Key Protected)
+  function checkPasswordProtection() {
+    const siteConfig = window.not || window.siteConfig || {};
+    let rawTarget = String(siteConfig.srgz || siteConfig.systemToken || siteConfig.sitePasswordHash || siteConfig.sitePassword || '').trim();
+
+    if (!rawTarget) return; // Disabled if no key is configured
+
+    if (rawTarget.startsWith('*')) {
+      rawTarget = rawTarget.substring(1).trim();
+    }
+
+    // Exempt Büyükçekmece Siteleri & Public Portal from password protection
+    const currentPath = window.location.pathname.toLowerCase();
+    if (currentPath.includes('buyukcekmecebilgiislem') || currentPath.includes('bcekmecesiteleri') || currentPath.includes('bcekmece-siteleri')) {
+      return;
+    }
+
+    const isAuth = sessionStorage.getItem('site_authenticated') === 'true';
+    if (isAuth) return; // User is authenticated for this session
+
+    // Create Password Protection Overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'login-gate-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    `;
+
+    overlay.innerHTML = `
+      <div style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-xl);
+        padding: 32px 28px;
+        max-width: 400px;
+        width: 100%;
+        box-shadow: var(--shadow-lg);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      ">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <div style="
+            width: 56px; height: 56px; border-radius: 16px;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--primary-border);
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h2 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+            Büyükçekmece Bilgi İşlem
+          </h2>
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+            Sisteme erişmek için lütfen giriş şifrenizi girin.
+          </p>
+        </div>
+
+        <form id="login-gate-form" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="position: relative;">
+            <input type="password" id="login-gate-pass" class="input-control" placeholder="Giriş Şifresi..." required autofocus style="padding-left: 40px;" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary);">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+
+          <div id="login-gate-error" style="display:none; color: var(--danger); font-size: 0.82rem; font-weight: 600;">
+            Hatalı şifre! Lütfen tekrar deneyin.
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; height: 46px; font-size: 0.95rem;">
+            Giriş Yap
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="m12 5 7 7-7 7"></path>
+            </svg>
+          </button>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const form = document.getElementById('login-gate-form');
+    const input = document.getElementById('login-gate-pass');
+    const errorEl = document.getElementById('login-gate-error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = input.value.trim();
+      const valHash = await computeSha256(val);
+
+      let targetKey = String(siteConfig.srgz || siteConfig.systemToken || siteConfig.sitePasswordHash || siteConfig.sitePassword || '').trim();
+      if (targetKey.startsWith('*')) {
+        targetKey = targetKey.substring(1).trim();
+      }
+
+      const targetHash = /^[a-fA-F0-9]{64}$/.test(targetKey) ? targetKey : await computeSha256(targetKey);
+
+      if (val === targetKey || valHash.toLowerCase() === targetHash.toLowerCase()) {
+        sessionStorage.setItem('site_authenticated', 'true');
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 300);
+      } else {
+        errorEl.style.display = 'block';
+        input.value = '';
+        input.focus();
+      }
+    });
+  }
+
+  // Dynamic & Extensible Navigation Rendering with Scope Isolation
   document.addEventListener('DOMContentLoaded', () => {
+    checkPasswordProtection();
     const navbarContainer = document.getElementById('navbar-container');
     if (!navbarContainer) return;
 
-    const currentPath = window.location.pathname;
-    const isIndex = currentPath.endsWith('index.html') || currentPath.endsWith('/') || (!currentPath.includes('.html'));
-    const isUlakbel = currentPath.includes('ulakbelForm.html') || currentPath.includes('ulakbelForm-detail.html');
+    const currentPath = window.location.pathname.toLowerCase();
+
+    // Determine current page context scope
+    let pageContext = 'index';
+    if (currentPath.includes('buyukcekmecebilgiislem')) {
+      pageContext = 'publicportal';
+    } else if (currentPath.includes('zapp.html') || currentPath.includes('z-app.html')) {
+      pageContext = 'zapp';
+    } else if (currentPath.includes('bcekmecesiteleri.html') || currentPath.includes('bcekmece-siteleri.html')) {
+      pageContext = 'bcekmece';
+    } else if (currentPath.includes('ulakbelform.html') || currentPath.includes('ulakbelform-detail.html')) {
+      pageContext = 'ulakbel';
+    } else if (currentPath.includes('sablonolusturucu.html')) {
+      pageContext = 'sablon';
+    } else if (currentPath.includes('sekmeler.html')) {
+      pageContext = 'sekmeler';
+    }
+
+    // Allow page-specific override if window.pageNavbarScope is set
+    const currentScope = window.pageNavbarScope || pageContext;
+
+    // Master Navigation Registry:
+    // `scopes` specifies which page contexts are allowed to see each button.
+    const navRegistry = [
+      {
+        id: 'siteler',
+        label: 'Siteler',
+        href: 'index.html',
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`,
+        scopes: ['index']
+      },
+      {
+        id: 'publicportal',
+        label: 'Büyükçekmece Bilgi İşlem',
+        href: 'buyukcekmecebilgiislem.html',
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`,
+        scopes: ['index', 'bcekmece', 'zapp', 'publicportal']
+      },
+      {
+        id: 'ulakbel',
+        label: 'Gönderi Önizleme',
+        href: 'ulakbelForm.html',
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M7 8h10M7 12h10M7 16h10"></path></svg>`,
+        scopes: ['index', 'ulakbel']
+      }
+    ];
+
+    // Merge any custom buttons declared by the page via window.customNavButtons
+    const pageCustomButtons = window.customNavButtons || [];
+    const allButtons = [...navRegistry, ...pageCustomButtons];
+
+    // Filter buttons permitted for the active scope
+    const visibleButtons = allButtons.filter(btn => {
+      if (!btn.scopes) return true;
+      return btn.scopes.includes(currentScope);
+    });
+
+    // Render navigation links HTML
+    const navLinksHtml = visibleButtons.map(btn => {
+      const isActive = (btn.id === currentScope) || (btn.href && currentPath.includes(btn.href.toLowerCase()));
+      return `
+        <a href="${btn.href}" class="nav-link ${isActive ? 'active' : ''}">
+          ${btn.icon || ''}
+          ${btn.label}
+        </a>
+      `;
+    }).join('');
+
+    // Determine Logo Brand destination URL
+    let brandHref = 'index.html';
+    if (currentScope === 'zapp') brandHref = 'zapp.html';
+    else if (currentScope === 'bcekmece') brandHref = 'bcekmeceSiteleri.html';
+    else if (currentScope === 'publicportal') brandHref = 'buyukcekmecebilgiislem.html';
+    else if (currentScope === 'ulakbel') brandHref = 'ulakbelForm.html';
 
     navbarContainer.innerHTML = `
       <nav class="navbar">
-        <a href="index.html" class="nav-brand">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        <a href="${brandHref}" class="nav-brand">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; color: var(--primary);">
+            <rect width="16" height="16" x="4" y="4" rx="2"></rect>
+            <rect width="6" height="6" x="9" y="9"></rect>
+            <path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 15h2M20 9h2M2 15h2M2 9h2"></path>
           </svg>
-          Sekmeler
+          Büyükçekmece Bilgi İşlem
         </a>
         
         <button class="menu-toggle" id="menu-toggle" aria-label="Menüyü Aç" type="button">
@@ -57,20 +264,7 @@
         </button>
 
         <div class="nav-links" id="nav-links">
-          <a href="index.html" class="nav-link ${isIndex ? 'active' : ''}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            Siteler
-          </a>
-          <a href="ulakbelForm.html" class="nav-link ${isUlakbel ? 'active' : ''}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="18" height="18" x="3" y="3" rx="2"></rect>
-              <path d="M7 8h10M7 12h10M7 16h10"></path>
-            </svg>
-            Gönderi Önizleme
-          </a>
+          ${navLinksHtml}
         </div>
 
         <div class="nav-actions">

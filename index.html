@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sekmeler - Site Adreslerim</title>
+  <title>Büyükçekmece Bilgi İşlem - Site Adreslerim</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -23,6 +23,13 @@
       </aside>
 
       <main class="main-content card-section">
+        <!-- Kurum & Vatandaş Main Group Tabs -->
+        <div class="pills-container" id="main-group-tabs" style="margin-bottom: 16px;">
+          <button type="button" class="pill active" data-tab="Tümü">Tümü (<span id="group-count-all">0</span>)</button>
+          <button type="button" class="pill" data-tab="Kurum">Kurum (<span id="group-count-kurum">0</span>)</button>
+          <button type="button" class="pill" data-tab="Vatandaş">Vatandaş (<span id="group-count-vatandas">0</span>)</button>
+        </div>
+
         <!-- Search & Quick Filters -->
         <div class="card-group" style="padding: 20px;">
           <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -106,7 +113,7 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
+  <script src="not.js"></script>
   <script src="app.js"></script>
   <script>
     const siteList = document.getElementById('site-list');
@@ -124,13 +131,14 @@
     const alwaysOpenCancel = document.getElementById('always-open-cancel');
     const alwaysOpenConfirm = document.getElementById('always-open-confirm');
 
-    const siteConfig = window.siteConfig || {};
-    const googleSheetId = siteConfig.googleSheetId || '';
-    const googleSheetTab = siteConfig.googleSheetTab || '';
+    const siteConfig = window.not || window.siteConfig || {};
+    const googleSheetId = siteConfig.d1 || siteConfig.googleSheetId || '';
+    const googleSheetTab = siteConfig.d2 || siteConfig.googleSheetTab || '';
 
     let sites = [];
     let filteredSites = [];
     let selectedCategory = 'Tümü';
+    let activeMainGroupTab = 'Tümü';
     let sitesLoaded = false;
 
     function updateCounts() {
@@ -138,11 +146,41 @@
     }
 
     function getSiteGroup(site) {
-      if (site.group) return site.group;
-      const category = site.category || '';
-      return ['Büyükçekmece Siteler', 'Notlar'].includes(category)
-        ? 'Vatandaş'
-        : 'Kurum';
+      if (site.group) {
+        const g = String(site.group).trim().toLowerCase();
+        if (g === 'k' || g === 'kurum' || g === 'kurumsal') return 'Kurum';
+        if (g === 'v' || g === 'vatandaş' || g === 'vatandas') return 'Vatandaş';
+      }
+      const category = (site.category || '').toLowerCase();
+      if (category.includes('kurum')) return 'Kurum';
+      if (category.includes('vatandaş') || category.includes('vatandas') || category.includes('büyükçekmece') || category.includes('bmece')) return 'Vatandaş';
+      return 'Kurum';
+    }
+
+    function updateMainGroupCounts() {
+      const countAll = sites.length;
+      const countKurum = sites.filter(s => getSiteGroup(s) === 'Kurum').length;
+      const countVatandas = sites.filter(s => getSiteGroup(s) === 'Vatandaş').length;
+
+      const elAll = document.getElementById('group-count-all');
+      const elKurum = document.getElementById('group-count-kurum');
+      const elVatandas = document.getElementById('group-count-vatandas');
+
+      if (elAll) elAll.textContent = countAll;
+      if (elKurum) elKurum.textContent = countKurum;
+      if (elVatandas) elVatandas.textContent = countVatandas;
+    }
+
+    function setupMainGroupTabs() {
+      const tabButtons = document.querySelectorAll('#main-group-tabs .pill');
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeMainGroupTab = btn.dataset.tab;
+          filterSitesAndRender();
+        });
+      });
     }
 
     function getCategoryCount(category) {
@@ -183,7 +221,7 @@
           }
         });
         return site;
-      }).filter(site => site.name && site.url);
+      }).filter(site => site.name && site.url && (site.category || '').trim().toLowerCase() !== 'z app');
     }
 
     function fetchSitesFromGoogleSheet() {
@@ -197,6 +235,7 @@
     }
 
     function loadSites() {
+      setupMainGroupTabs();
       const source = googleSheetId.trim()
         ? fetchSitesFromGoogleSheet()
         : Promise.resolve().then(() => {
@@ -246,8 +285,9 @@
 
     function maybeInitialize() {
       if (!sitesLoaded) return;
+      updateMainGroupCounts();
       populateCategoryList();
-      renderSites(sites);
+      renderSites(filterSites());
       updateOpenAlwaysOpenButton();
       
       // Auto trigger popup for alwaysOpen sites on first load
@@ -256,10 +296,10 @@
 
     function selectCategory(category) {
       selectedCategory = category;
-      document.querySelectorAll('.side-item').forEach(button => {
+      document.querySelectorAll('#category-list .side-item').forEach(button => {
         button.classList.toggle('active', button.dataset.category === category);
       });
-      document.querySelectorAll('.pill').forEach(button => {
+      document.querySelectorAll('#quick-filters .pill').forEach(button => {
         button.classList.toggle('active', button.dataset.category === category);
       });
       updateOpenAlwaysOpenButton();
@@ -296,7 +336,6 @@
 
     function updateOpenAlwaysOpenButton() {
       const alwaysOpenCount = sites.filter(site => site.alwaysOpen).length;
-      // Button is always visible if alwaysOpen count > 0, offering constant one-click access
       openAlwaysOpenButton.style.display = alwaysOpenCount > 0 ? 'inline-flex' : 'none';
     }
 
@@ -313,10 +352,14 @@
     function filterSites() {
       const query = searchInput.value.trim().toLowerCase();
       return sites.filter(site => {
+        const groupName = getSiteGroup(site);
+        const matchesMainGroup = activeMainGroupTab === 'Tümü' ? true : groupName === activeMainGroupTab;
+
         const matchesQuery = site.name.toLowerCase().includes(query) ||
           (site.description || '').toLowerCase().includes(query) ||
           site.url.toLowerCase().includes(query) ||
           (site.category || '').toLowerCase().includes(query);
+
         const matchesCategory = selectedCategory === 'Tümü'
           ? true
           : selectedCategory === 'Sık Kullanılanlar'
@@ -324,7 +367,8 @@
             : selectedCategory === 'Her Zaman Açılacaklar'
               ? site.alwaysOpen
               : (site.category || 'Diğer') === selectedCategory;
-        return matchesQuery && matchesCategory;
+
+        return matchesMainGroup && matchesQuery && matchesCategory;
       });
     }
 
@@ -342,15 +386,14 @@
       }
     }
 
-
-
     function createCard(site) {
       const card = document.createElement('li');
       card.className = 'item-card';
 
+      const groupName = getSiteGroup(site);
       const badge = document.createElement('span');
-      badge.className = 'item-card-badge';
-      badge.textContent = getSiteGroup(site);
+      badge.className = `item-card-badge ${groupName === 'Kurum' ? 'badge-kurum' : 'badge-vatandas'}`;
+      badge.textContent = groupName;
       card.appendChild(badge);
 
       const head = document.createElement('div');

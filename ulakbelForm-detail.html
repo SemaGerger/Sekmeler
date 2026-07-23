@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sekmeler - Gönderi Detayı</title>
+  <title>Büyükçekmece Bilgi İşlem - Gönderi Detayı</title>
   <link rel="stylesheet" href="style.css">
   <style>
     .tabs-container {
@@ -148,7 +148,7 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
+  <script src="not.js"></script>
   <script src="app.js"></script>
   <script>
     const status = document.getElementById('status');
@@ -186,9 +186,9 @@
 
     let activeItem = null;
 
-    const siteConfig = window.siteConfig || {};
-    const googleSheetId = siteConfig.googleSheetId || '';
-    const googlePreviewTab = siteConfig.googlePreviewTab || '';
+    const siteConfig = window.not || window.siteConfig || {};
+    const googleSheetId = siteConfig.d1 || siteConfig.googleSheetId || '';
+    const googlePreviewTab = siteConfig.d3 || siteConfig.googlePreviewTab || '';
 
     function setStatus(message, isError = false) {
       if (!message) {

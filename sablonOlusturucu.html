@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sekmeler - Şablon Oluşturucu</title>
+  <title>Büyükçekmece Bilgi İşlem - Şablon Oluşturucu</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -72,7 +72,7 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
+  <script src="not.js"></script>
   <script src="app.js"></script>
   <script>
     const status = document.getElementById('status');
@@ -84,9 +84,9 @@
     const dCodeBlock = document.getElementById('output-code-block');
     const copyHtmlBtn = document.getElementById('copy-html-btn');
 
-    const siteConfig = window.siteConfig || {};
-    const googleSheetId = siteConfig.googleSheetId || '';
-    const googlePreviewTab = siteConfig.googlePreviewTab || '';
+    const siteConfig = window.not || window.siteConfig || {};
+    const googleSheetId = siteConfig.d1 || siteConfig.googleSheetId || '';
+    const googlePreviewTab = siteConfig.d3 || siteConfig.googlePreviewTab || '';
 
     let allItems = [];
     let activeItem = null;

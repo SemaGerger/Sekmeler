@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Büyükçekmece Bilgi İşlem - Kamu Portalı</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container fade-in">
+    <!-- Shared Navigation (Scope isolated for Public Portal) -->
+    <div id="navbar-container"></div>
+
+    <header class="page-header" style="margin-bottom: 20px;">
+      <h1 class="page-title">Büyükçekmece Bilgi İşlem Portalı</h1>
+      <p class="page-subtitle">Büyükçekmece Belediyesi resmi web sistemleri ve mobil uygulamalar kamu erişim noktası.</p>
+    </header>
+
+    <main class="card-section">
+      <!-- Level 1: Main Section Switcher Buttons (Siteler / Uygulamalar) -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+        <button id="btn-section-sites" type="button" class="btn btn-primary" style="padding: 10px 20px; font-weight: 600; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          Büyükçekmece Siteleri
+        </button>
+
+        <button id="btn-section-apps" type="button" class="btn btn-outline" style="padding: 10px 20px; font-weight: 600; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect>
+            <path d="M12 18h.01"></path>
+          </svg>
+          Büyükçekmece Uygulamaları
+        </button>
+      </div>
+
+      <!-- Level 2: Sub-Group Tabs (Tümü / Kurum / Vatandaş) -->
+      <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+        <div class="pills-container" id="sub-group-tabs" style="margin-bottom: 0;">
+          <button type="button" class="pill active" data-sub="Tümü">Tümü (<span id="sub-count-all">0</span>)</button>
+          <button type="button" class="pill" data-sub="Kurum">Kurum (<span id="sub-count-kurum">0</span>)</button>
+          <button type="button" class="pill" data-sub="Vatandaş">Vatandaş (<span id="sub-count-vatandas">0</span>)</button>
+        </div>
+
+        <!-- Search Input -->
+        <div style="position: relative; max-width: 520px;">
+          <input id="search" class="input-control" type="search" placeholder="İçerikte veya açıklamalarda ara..." aria-label="Portalda ara" style="padding-left: 40px;" />
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary);">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading" class="card-group" style="text-align: center; padding: 40px 20px;">
+        <div class="skeleton-loader">
+          <div class="skeleton-line" style="width: 30%"></div>
+          <div class="skeleton-line" style="width: 80%"></div>
+          <div class="skeleton-line" style="width: 60%"></div>
+        </div>
+      </div>
+
+      <!-- Status Alert Box -->
+      <div id="status" class="alert" style="display:none; margin-bottom: 16px;"></div>
+
+      <!-- Grid Display -->
+      <div id="portal-grid" class="zapp-grid" style="display:none;"></div>
+    </main>
+  </div>
+
+  <!-- Dual QR Code Modal for Apps -->
+  <div id="qr-modal" class="modal-overlay" aria-hidden="true" style="display:none;">
+    <div class="modal-container fade-in">
+      <div class="modal-header">
+        <h3 id="qr-modal-title" class="modal-title">İndirme Karekodları</h3>
+        <button id="qr-modal-close" type="button" class="modal-close-btn" aria-label="Kapat">&times;</button>
+      </div>
+      <div id="qr-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="not.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const btnSectionSites = document.getElementById('btn-section-sites');
+    const btnSectionApps = document.getElementById('btn-section-apps');
+
+    const statusEl = document.getElementById('status');
+    const loadingEl = document.getElementById('loading');
+    const portalGrid = document.getElementById('portal-grid');
+    const searchInput = document.getElementById('search');
+
+    const qrModal = document.getElementById('qr-modal');
+    const qrModalTitle = document.getElementById('qr-modal-title');
+    const qrModalBody = document.getElementById('qr-modal-body');
+    const qrModalClose = document.getElementById('qr-modal-close');
+
+    const config = window.not || window.siteConfig || {};
+    const googleSheetId = config.d1 || config.googleSheetId || '';
+    const googleSheetTab = config.d2 || config.googleSheetTab || '';
+
+    let allPortalItems = [];
+    let activeSection = 'sites'; // 'sites' or 'apps'
+    let activeSubGroup = 'Tümü'; // 'Tümü', 'Kurum', 'Vatandaş'
+
+    function setStatus(text, isError = false) {
+      if (!text) {
+        statusEl.style.display = 'none';
+        return;
+      }
+      statusEl.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>${text}</span>
+      `;
+      statusEl.className = isError ? 'alert alert-warning fade-in' : 'alert alert-info fade-in';
+      statusEl.style.display = 'flex';
+    }
+
+    function parseSheetData(text) {
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+      if (!match) return [];
+      const json = JSON.parse(match[1]);
+      const cols = json.table.cols.map(col => (col.label || col.id || '').trim().toLowerCase());
+      const rows = json.table.rows || [];
+      const mapHeader = header => {
+        const key = header.trim().toLowerCase();
+        if (/^name$|^title$|^site$/i.test(key)) return 'name';
+        if (/^url$|^link$|^adres$/i.test(key)) return 'url';
+        if (/^description$|^desc$|^açıklama$/i.test(key)) return 'description';
+        if (/^category$|^kategori$/i.test(key)) return 'category';
+        if (/^group$|^grup$/i.test(key)) return 'group';
+        return null;
+      };
+      const headers = cols.map(mapHeader);
+
+      const parsed = rows.map(row => {
+        const item = {};
+        row.c.forEach((cell, index) => {
+          const field = headers[index];
+          if (!field || !cell) return;
+          item[field] = cell.v != null ? String(cell.v).trim() : (cell.f ? String(cell.f).trim() : '');
+        });
+        return item;
+      }).filter(item => item.name && item.url);
+
+      const appRows = parsed.filter(item => (item.category || '').toLowerCase() === 'z app');
+      const siteRows = parsed.filter(item => {
+        const cat = (item.category || '').toLowerCase();
+        const grp = (item.group || '').toLowerCase();
+        if (cat === 'z app') return false;
+        return cat.includes('bmece') || cat.includes('büyükçekmece') || grp === 'k' || grp === 'v' || grp.includes('kurum') || grp.includes('vatandaş');
+      });
+
+      function determineGroup(item) {
+        const grp = String(item.group || '').trim().toLowerCase();
+        if (grp === 'k' || grp.includes('kurum')) return 'Kurum';
+        if (grp === 'v' || grp.includes('vatandaş') || grp.includes('vatandas')) return 'Vatandaş';
+
+        const cat = String(item.category || '').trim().toLowerCase();
+        if (cat.includes('kurum')) return 'Kurum';
+        if (cat.includes('vatandaş') || cat.includes('vatandas')) return 'Vatandaş';
+
+        const name = String(item.name || '').trim().toLowerCase();
+        if (name.includes('kurum')) return 'Kurum';
+
+        return 'Vatandaş';
+      }
+
+      // Apps Map
+      const appsMap = new Map();
+      appRows.forEach(row => {
+        const rawName = row.name;
+        const isAndroid = /\bandroid\b/i.test(rawName);
+        const isIos = /\bios\b/i.test(rawName);
+        const cleanName = rawName.replace(/\s+(android|ios)\s*$/i, '').trim();
+
+        if (!appsMap.has(cleanName)) {
+          appsMap.set(cleanName, {
+            type: 'app',
+            name: cleanName,
+            description: row.description || '',
+            group: determineGroup(row),
+            androidUrl: '',
+            iosUrl: ''
+          });
+        }
+
+        const appObj = appsMap.get(cleanName);
+        if (isAndroid) appObj.androidUrl = row.url;
+        else if (isIos) appObj.iosUrl = row.url;
+        else {
+          if (!appObj.androidUrl) appObj.androidUrl = row.url;
+          else if (!appObj.iosUrl) appObj.iosUrl = row.url;
+        }
+      });
+
+      // Sites Map
+      const siteObjects = siteRows.map(row => {
+        return {
+          type: 'site',
+          name: row.name,
+          url: row.url,
+          description: row.description || '',
+          group: determineGroup(row)
+        };
+      });
+
+      return [...siteObjects, ...Array.from(appsMap.values())];
+    }
+
+    function getDomain(url) {
+      try {
+        return new URL(url).hostname;
+      } catch {
+        return url;
+      }
+    }
+
+    function updateSectionButtonsUI() {
+      if (activeSection === 'sites') {
+        btnSectionSites.className = 'btn btn-primary';
+        btnSectionApps.className = 'btn btn-outline';
+      } else {
+        btnSectionSites.className = 'btn btn-outline';
+        btnSectionApps.className = 'btn btn-primary';
+      }
+    }
+
+    function updateSubCounts() {
+      const sectionItems = allPortalItems.filter(item => {
+        return activeSection === 'sites' ? item.type === 'site' : item.type === 'app';
+      });
+
+      const countAll = sectionItems.length;
+      const countKurum = sectionItems.filter(i => i.group === 'Kurum').length;
+      const countVatandas = sectionItems.filter(i => i.group === 'Vatandaş').length;
+
+      document.getElementById('sub-count-all').textContent = countAll;
+      document.getElementById('sub-count-kurum').textContent = countKurum;
+      document.getElementById('sub-count-vatandas').textContent = countVatandas;
+    }
+
+    function setupEventListeners() {
+      // Level 1 Section Buttons
+      btnSectionSites.addEventListener('click', () => {
+        activeSection = 'sites';
+        updateSectionButtonsUI();
+        updateSubCounts();
+        filterAndRender();
+      });
+
+      btnSectionApps.addEventListener('click', () => {
+        activeSection = 'apps';
+        updateSectionButtonsUI();
+        updateSubCounts();
+        filterAndRender();
+      });
+
+      // Level 2 Sub-Group Tabs
+      const subTabs = document.querySelectorAll('#sub-group-tabs .pill');
+      subTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          subTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          activeSubGroup = tab.dataset.sub;
+          filterAndRender();
+        });
+      });
+    }
+
+    function filterAndRender() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = allPortalItems.filter(item => {
+        // Filter by Level 1 section (sites vs apps)
+        const matchesSection = activeSection === 'sites' ? item.type === 'site' : item.type === 'app';
+
+        // Filter by Level 2 sub-group (Tümü, Kurum, Vatandaş)
+        const matchesSubGroup = activeSubGroup === 'Tümü' ? true : item.group === activeSubGroup;
+
+        // Filter by Search Query
+        const matchesQuery = item.name.toLowerCase().includes(query) ||
+          (item.description || '').toLowerCase().includes(query) ||
+          (item.url || '').toLowerCase().includes(query);
+
+        return matchesSection && matchesSubGroup && matchesQuery;
+      });
+
+      renderPortalGrid(filtered);
+    }
+
+    function openQrModal(appName, androidUrl, iosUrl) {
+      qrModalTitle.textContent = `${appName} Karekodları`;
+      let qrContentHtml = '<div class="modal-qr-grid">';
+
+      if (androidUrl) {
+        const androidQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(androidUrl)}`;
+        qrContentHtml += `
+          <div class="modal-qr-box">
+            <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">Google Play (Android)</h4>
+            <img src="${androidQrSrc}" alt="${appName} Android QR" width="160" height="160" style="border-radius: 8px;" />
+            <a href="${androidUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-android" style="margin-top: 10px; font-size: 0.78rem;">Google Play'de Aç</a>
+          </div>
+        `;
+      }
+
+      if (iosUrl) {
+        const iosQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(iosUrl)}`;
+        qrContentHtml += `
+          <div class="modal-qr-box">
+            <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">App Store (iOS)</h4>
+            <img src="${iosQrSrc}" alt="${appName} iOS QR" width="160" height="160" style="border-radius: 8px;" />
+            <a href="${iosUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="margin-top: 10px; font-size: 0.78rem;">App Store'da Aç</a>
+          </div>
+        `;
+      }
+
+      qrContentHtml += '</div>';
+      qrModalBody.innerHTML = qrContentHtml;
+      qrModal.style.display = 'flex';
+      qrModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function renderPortalGrid(items) {
+      loadingEl.style.display = 'none';
+      if (!items || items.length === 0) {
+        portalGrid.style.display = 'none';
+        const sectionName = activeSection === 'sites' ? 'Büyükçekmece Sitesi' : 'Büyükçekmece Uygulaması';
+        setStatus(`Seçilen kriterlere uygun ${sectionName} bulunamadı.`);
+        return;
+      }
+
+      setStatus('');
+      portalGrid.innerHTML = '';
+      portalGrid.style.display = 'grid';
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'zapp-card';
+
+        const isApp = item.type === 'app';
+        const groupLabel = item.group || (isApp ? 'Mobil Uygulama' : 'Web Portal');
+        const groupClass = groupLabel.toLowerCase().includes('kurum') ? 'badge-kurum' : 'badge-vatandas';
+
+        if (isApp) {
+          // Uygulama Kartı
+          card.innerHTML = `
+            <div class="zapp-card-header">
+              <h2 class="zapp-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect>
+                  <path d="M12 18h.01"></path>
+                </svg>
+                ${item.name}
+              </h2>
+              <span class="zapp-badge ${groupClass}">${groupLabel}</span>
+            </div>
+
+            <div class="zapp-card-body">
+              <div class="zapp-image-container" style="background: var(--bg-tertiary);">
+                <div class="zapp-image-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect>
+                    <path d="M12 18h.01"></path>
+                  </svg>
+                  <span>Mobil Uygulama</span>
+                </div>
+              </div>
+
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                ${item.description || 'Büyükçekmece Belediyesi resmi mobil uygulaması.'}
+              </p>
+
+              <div class="zapp-action-row" style="margin-top: auto; display: flex; gap: 8px;">
+                ${item.androidUrl ? `<a href="${item.androidUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-android" style="flex:1;">Google Play</a>` : ''}
+                ${item.iosUrl ? `<a href="${item.iosUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="flex:1;">App Store</a>` : ''}
+                <button type="button" class="zapp-btn-qr btn-qr-trigger" aria-label="Karekod Göster" title="Karekod Okut">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
+              </div>
+            </div>
+          `;
+
+          const qrBtn = card.querySelector('.btn-qr-trigger');
+          if (qrBtn) {
+            qrBtn.addEventListener('click', () => openQrModal(item.name, item.androidUrl, item.iosUrl));
+          }
+
+        } else {
+          // Site Kartı
+          const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(item.url)}&sz=128`;
+          card.innerHTML = `
+            <div class="zapp-card-header">
+              <h2 class="zapp-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                </svg>
+                ${item.name}
+              </h2>
+              <span class="zapp-badge ${groupClass}">${groupLabel}</span>
+            </div>
+
+            <div class="zapp-card-body">
+              <div class="zapp-image-container" style="background: var(--bg-tertiary);">
+                <img src="${faviconUrl}" alt="${item.name} Logosu" style="width: 54px; height: 54px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><span>${getDomain(item.url)}</span></div>'" />
+              </div>
+
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                ${item.description || getDomain(item.url)}
+              </p>
+
+              <div class="zapp-action-row" style="margin-top: auto;">
+                <a href="${item.url}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="flex:1;">
+                  Adrese Git
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </div>
+            </div>
+          `;
+        }
+
+        portalGrid.appendChild(card);
+      });
+    }
+
+    async function loadPortalData() {
+      setupEventListeners();
+      if (!googleSheetId) {
+        loadingEl.style.display = 'none';
+        setStatus('Google Sheet ID ayarlı değil.', true);
+        return;
+      }
+
+      const sheetNameQuery = googleSheetTab ? `&sheet=${encodeURIComponent(googleSheetTab)}` : '';
+      const url = `https://docs.google.com/spreadsheets/d/${googleSheetId}/gviz/tq?tqx=out:json${sheetNameQuery}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Fetch failed');
+        const text = await response.text();
+        allPortalItems = parseSheetData(text);
+        updateSubCounts();
+        filterAndRender();
+      } catch (err) {
+        console.error(err);
+        loadingEl.style.display = 'none';
+        setStatus('Kamu Portalı verileri yüklenirken bir hata oluştu.', true);
+      }
+    }
+
+    qrModalClose.onclick = () => {
+      qrModal.style.display = 'none';
+      qrModal.setAttribute('aria-hidden', 'true');
+    };
+
+    window.onclick = (e) => {
+      if (e.target === qrModal) {
+        qrModal.style.display = 'none';
+        qrModal.setAttribute('aria-hidden', 'true');
+      }
+    };
+
+    searchInput.addEventListener('input', filterAndRender);
+    loadPortalData();
+  </script>
+</body>
+</html>
