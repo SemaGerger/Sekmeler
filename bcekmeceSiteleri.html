@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
   <title>Büyükçekmece Bilgi İşlem - Büyükçekmece Siteleri</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -32,6 +34,7 @@
           <button type="button" class="pill active" data-tab="Tümü">Tümü (<span id="count-all">0</span>)</button>
           <button type="button" class="pill" data-tab="Kurum">Kurum (<span id="count-kurum">0</span>)</button>
           <button type="button" class="pill" data-tab="Vatandaş">Vatandaş (<span id="count-vatandas">0</span>)</button>
+          <button type="button" class="pill" data-tab="Deneme">Deneme (<span id="count-deneme">0</span>)</button>
         </div>
       </div>
 
@@ -50,6 +53,15 @@
       <!-- Compact Grid Container (Identical to Büyükçekmece Uygulamaları design) -->
       <div id="site-grid" class="zapp-grid" style="display:none;"></div>
     </main>
+  <!-- QR Code Modal -->
+  <div id="qr-modal" class="modal-overlay" aria-hidden="true" style="display:none;">
+    <div class="modal-container fade-in">
+      <div class="modal-header">
+        <h3 id="qr-modal-title" class="modal-title">Karekod</h3>
+        <button id="qr-modal-close" type="button" class="modal-close-btn" aria-label="Kapat">&times;</button>
+      </div>
+      <div id="qr-modal-body" class="modal-body"></div>
+    </div>
   </div>
 
   <script src="not.js"></script>
@@ -85,8 +97,11 @@
     }
 
     function getSiteGroup(site) {
+      const grp = (site.group || '').toLowerCase();
+      if (grp.includes('deneme')) return 'Deneme';
       const cat = (site.category || '').toLowerCase();
-      if (cat.includes('kurum')) return 'Kurum';
+      if (cat.includes('deneme')) return 'Deneme';
+      if (cat.includes('kurum') || grp.includes('kurum')) return 'Kurum';
       return 'Vatandaş';
     }
 
@@ -98,13 +113,15 @@
       const rows = json.table.rows || [];
       const mapHeader = header => {
         const key = header.trim().toLowerCase();
-        if (/^name$|^title$|^site$/i.test(key)) return 'name';
-        if (/^url$|^link$|^adres$/i.test(key)) return 'url';
-        if (/^description$|^desc$|^açıklama$/i.test(key)) return 'description';
+        if (/^name$|^title$|^site$|^ad$|^başlık$|^baslik$/i.test(key)) return 'name';
+        if (/^url$|^link$|^adres$|^web$/i.test(key)) return 'url';
+        if (/^description$|^desc$|^açıklama$|^aciklama$/i.test(key)) return 'description';
         if (/^category$|^kategori$/i.test(key)) return 'category';
         if (/^favorite$|^favourite$|^star$|^sık kullanılan$/i.test(key)) return 'favorite';
         if (/^alwaysopen$|^always_open$|^always open$|^her zaman$/i.test(key)) return 'alwaysOpen';
         if (/^group$|^grup$/i.test(key)) return 'group';
+        if (/^karekod$|^karekodlar$|^qr$|^qrkod$|^qr[ _]?code$/i.test(key)) return 'karekod';
+        if (/^resimler$|^resim$|^görsel$|^gorsel$|^image$|^img$/i.test(key)) return 'resimler';
         return null;
       };
       const headers = cols.map(mapHeader);
@@ -118,26 +135,40 @@
         });
         return site;
       }).filter(site => {
-        if (!site.name || !site.url) return false;
+        if (!site.name) return false;
         const cat = (site.category || '').toLowerCase();
-        // Strict filter: ONLY 'bmece siteler kurum' and 'bmece siteler vatandaş' / 'bmece vatandaş'
-        return cat.includes('bmece siteler kurum') || cat.includes('bmece siteler vatandaş') || cat.includes('bmece vatandaş');
+        if (cat === 'z app') return false;
+        return true;
       });
     }
 
     function updateTabCounts() {
-      document.getElementById('count-all').textContent = allSites.length;
+      document.getElementById('count-all').textContent = allSites.filter(s => getSiteGroup(s) !== 'Deneme').length;
       document.getElementById('count-kurum').textContent = allSites.filter(s => getSiteGroup(s) === 'Kurum').length;
       document.getElementById('count-vatandas').textContent = allSites.filter(s => getSiteGroup(s) === 'Vatandaş').length;
+      document.getElementById('count-deneme').textContent = allSites.filter(s => getSiteGroup(s) === 'Deneme').length;
     }
 
     function setupTabs() {
       const tabButtons = document.querySelectorAll('#bcekmece-tabs .pill');
       tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
+          const targetTab = btn.dataset.tab;
+          if (targetTab === 'Deneme' && sessionStorage.getItem('deneme_authenticated') !== 'true') {
+            if (typeof window.promptDenemePassword === 'function') {
+              window.promptDenemePassword(() => {
+                tabButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeTab = targetTab;
+                filterAndRenderSites();
+              });
+            }
+            return;
+          }
+
           tabButtons.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          activeTab = btn.dataset.tab;
+          activeTab = targetTab;
           filterAndRenderSites();
         });
       });
@@ -147,7 +178,7 @@
       const query = searchInput.value.trim().toLowerCase();
       const filtered = allSites.filter(site => {
         const groupName = getSiteGroup(site);
-        const matchesTab = activeTab === 'Tümü' ? true : groupName === activeTab;
+        const matchesTab = activeTab === 'Tümü' ? groupName !== 'Deneme' : groupName === activeTab;
         const matchesQuery = site.name.toLowerCase().includes(query) ||
           (site.description || '').toLowerCase().includes(query) ||
           site.url.toLowerCase().includes(query);
@@ -162,6 +193,45 @@
       } catch {
         return url;
       }
+    }
+
+    function openQrModal(site) {
+      const modal = document.getElementById('qr-modal');
+      const titleEl = document.getElementById('qr-modal-title');
+      const bodyEl = document.getElementById('qr-modal-body');
+      if (!modal || !bodyEl) return;
+
+      titleEl.textContent = `${site.name} Karekodu`;
+      const customQr = (site.karekod || '').trim();
+      let qrContentHtml = '<div class="modal-qr-grid">';
+
+      if (customQr) {
+        const isImageUrl = /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(customQr) || customQr.startsWith('data:image/');
+        const qrSrc = isImageUrl ? customQr : `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(customQr)}`;
+
+        qrContentHtml += `
+          <div class="modal-qr-box" style="grid-column: 1 / -1; padding: 20px;">
+            <h4 style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 600;">Karekod</h4>
+            <img src="${qrSrc}" alt="${site.name} Karekod" width="160" height="160" style="border-radius: 8px; object-fit: contain;" />
+            ${!isImageUrl && /^https?:\/\//i.test(customQr) ? `<a href="${customQr}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="margin-top: 12px; font-size: 0.78rem;">Bağlantıyı Aç</a>` : ''}
+          </div>
+        `;
+      } else {
+        qrContentHtml += `
+          <div class="modal-qr-box" style="grid-column: 1 / -1; padding: 24px; text-align: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-tertiary); margin-bottom: 8px;">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--danger);">Karekod Yok</p>
+            <span style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 4px; display: block;">Bu içerik için e-tabloda tanımlı karekod bulunmuyor.</span>
+          </div>
+        `;
+      }
+
+      qrContentHtml += '</div>';
+      bodyEl.innerHTML = qrContentHtml;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
     }
 
     function renderGrid(sitesToRender) {
@@ -181,8 +251,15 @@
         card.className = 'zapp-card';
 
         const groupName = getSiteGroup(site);
-        const badgeClass = groupName === 'Kurum' ? 'badge-kurum' : 'badge-vatandas';
+        let badgeClass = 'badge-vatandas';
+        if (groupName === 'Kurum') badgeClass = 'badge-kurum';
+        else if (groupName === 'Deneme') badgeClass = 'badge-deneme';
+
+        const customImg = (site.resimler || '').trim();
         const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(site.url)}&sz=128`;
+        const imageContentHtml = customImg
+          ? `<img src="${customImg}" alt="${site.name} Görseli" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><span>${site.name}</span></div>'" />`
+          : `<img src="${faviconUrl}" alt="${site.name} Logosu" style="width: 54px; height: 54px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'28\\' height=\\'28\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\'><path d=\\'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\\'/><path d=\\'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\\'/></svg><span>${getDomain(site.url)}</span></div>'" />`;
 
         card.innerHTML = `
           <div class="zapp-card-header">
@@ -198,9 +275,9 @@
           </div>
 
           <div class="zapp-card-body">
-            <!-- Favicon / Logo Image Container -->
+            <!-- Favicon / Logo / Custom Image Container -->
             <div class="zapp-image-container" style="background: var(--bg-tertiary);">
-              <img src="${faviconUrl}" alt="${site.name} Logosu" style="width: 54px; height: 54px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'28\\' height=\\'28\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\'><path d=\\'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\\'/><path d=\\'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\\'/></svg><span>${getDomain(site.url)}</span></div>'" />
+              ${imageContentHtml}
             </div>
 
             <!-- Description -->
@@ -209,7 +286,7 @@
             </p>
 
             <!-- Action Button -->
-            <div class="zapp-action-row" style="margin-top: auto;">
+            <div class="zapp-action-row" style="margin-top: auto; display: flex; gap: 8px;">
               <a href="${site.url}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="flex: 1;">
                 Adrese Git
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -218,9 +295,17 @@
                   <line x1="10" y1="14" x2="21" y2="3"></line>
                 </svg>
               </a>
+              <button type="button" class="zapp-btn-qr btn-qr-trigger" aria-label="Karekod Göster" title="Karekod Okut">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              </button>
             </div>
           </div>
         `;
+
+        const qrBtn = card.querySelector('.btn-qr-trigger');
+        if (qrBtn) {
+          qrBtn.addEventListener('click', () => openQrModal(site));
+        }
 
         siteGrid.appendChild(card);
       });
@@ -250,6 +335,21 @@
         setStatus('Büyükçekmece Siteleri yüklenirken bir hata oluştu.', true);
       }
     }
+
+    const qrModal = document.getElementById('qr-modal');
+    const qrModalClose = document.getElementById('qr-modal-close');
+    if (qrModalClose) {
+      qrModalClose.onclick = () => {
+        qrModal.style.display = 'none';
+        qrModal.setAttribute('aria-hidden', 'true');
+      };
+    }
+    window.addEventListener('click', (e) => {
+      if (e.target === qrModal) {
+        qrModal.style.display = 'none';
+        qrModal.setAttribute('aria-hidden', 'true');
+      }
+    });
 
     searchInput.addEventListener('input', filterAndRenderSites);
     loadSites();

@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
   <title>Büyükçekmece Bilgi İşlem - Kamu Portalı</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -40,6 +42,7 @@
           <button type="button" class="pill active" data-sub="Tümü">Tümü (<span id="sub-count-all">0</span>)</button>
           <button type="button" class="pill" data-sub="Kurum">Kurum (<span id="sub-count-kurum">0</span>)</button>
           <button type="button" class="pill" data-sub="Vatandaş">Vatandaş (<span id="sub-count-vatandas">0</span>)</button>
+          <button type="button" class="pill" data-sub="Deneme">Deneme (<span id="sub-count-deneme">0</span>)</button>
         </div>
 
         <!-- Search Input -->
@@ -129,11 +132,13 @@
       const rows = json.table.rows || [];
       const mapHeader = header => {
         const key = header.trim().toLowerCase();
-        if (/^name$|^title$|^site$/i.test(key)) return 'name';
-        if (/^url$|^link$|^adres$/i.test(key)) return 'url';
-        if (/^description$|^desc$|^açıklama$/i.test(key)) return 'description';
+        if (/^name$|^title$|^site$|^ad$|^başlık$|^baslik$/i.test(key)) return 'name';
+        if (/^url$|^link$|^adres$|^web$/i.test(key)) return 'url';
+        if (/^description$|^desc$|^açıklama$|^aciklama$/i.test(key)) return 'description';
         if (/^category$|^kategori$/i.test(key)) return 'category';
         if (/^group$|^grup$/i.test(key)) return 'group';
+        if (/^karekod$|^karekodlar$|^qr$|^qrkod$|^qr[ _]?code$/i.test(key)) return 'karekod';
+        if (/^resimler$|^resim$|^görsel$|^gorsel$|^image$|^img$/i.test(key)) return 'resimler';
         return null;
       };
       const headers = cols.map(mapHeader);
@@ -146,26 +151,24 @@
           item[field] = cell.v != null ? String(cell.v).trim() : (cell.f ? String(cell.f).trim() : '');
         });
         return item;
-      }).filter(item => item.name && item.url);
+      }).filter(item => item.name);
 
       const appRows = parsed.filter(item => (item.category || '').toLowerCase() === 'z app');
-      const siteRows = parsed.filter(item => {
-        const cat = (item.category || '').toLowerCase();
-        const grp = (item.group || '').toLowerCase();
-        if (cat === 'z app') return false;
-        return cat.includes('bmece') || cat.includes('büyükçekmece') || grp === 'k' || grp === 'v' || grp.includes('kurum') || grp.includes('vatandaş');
-      });
+      const siteRows = parsed.filter(item => (item.category || '').toLowerCase() !== 'z app');
 
       function determineGroup(item) {
         const grp = String(item.group || '').trim().toLowerCase();
+        if (grp.includes('deneme')) return 'Deneme';
         if (grp === 'k' || grp.includes('kurum')) return 'Kurum';
         if (grp === 'v' || grp.includes('vatandaş') || grp.includes('vatandas')) return 'Vatandaş';
 
         const cat = String(item.category || '').trim().toLowerCase();
+        if (cat.includes('deneme')) return 'Deneme';
         if (cat.includes('kurum')) return 'Kurum';
         if (cat.includes('vatandaş') || cat.includes('vatandas')) return 'Vatandaş';
 
         const name = String(item.name || '').trim().toLowerCase();
+        if (name.includes('deneme')) return 'Deneme';
         if (name.includes('kurum')) return 'Kurum';
 
         return 'Vatandaş';
@@ -186,11 +189,16 @@
             description: row.description || '',
             group: determineGroup(row),
             androidUrl: '',
-            iosUrl: ''
+            iosUrl: '',
+            karekod: row.karekod || '',
+            resimler: row.resimler || ''
           });
         }
 
         const appObj = appsMap.get(cleanName);
+        if (row.karekod && !appObj.karekod) appObj.karekod = row.karekod;
+        if (row.resimler && !appObj.resimler) appObj.resimler = row.resimler;
+
         if (isAndroid) appObj.androidUrl = row.url;
         else if (isIos) appObj.iosUrl = row.url;
         else {
@@ -206,7 +214,9 @@
           name: row.name,
           url: row.url,
           description: row.description || '',
-          group: determineGroup(row)
+          group: determineGroup(row),
+          karekod: row.karekod || '',
+          resimler: row.resimler || ''
         };
       });
 
@@ -236,13 +246,15 @@
         return activeSection === 'sites' ? item.type === 'site' : item.type === 'app';
       });
 
-      const countAll = sectionItems.length;
+      const countAll = sectionItems.filter(i => i.group !== 'Deneme').length;
       const countKurum = sectionItems.filter(i => i.group === 'Kurum').length;
       const countVatandas = sectionItems.filter(i => i.group === 'Vatandaş').length;
+      const countDeneme = sectionItems.filter(i => i.group === 'Deneme').length;
 
       document.getElementById('sub-count-all').textContent = countAll;
       document.getElementById('sub-count-kurum').textContent = countKurum;
       document.getElementById('sub-count-vatandas').textContent = countVatandas;
+      document.getElementById('sub-count-deneme').textContent = countDeneme;
     }
 
     function setupEventListeners() {
@@ -265,9 +277,22 @@
       const subTabs = document.querySelectorAll('#sub-group-tabs .pill');
       subTabs.forEach(tab => {
         tab.addEventListener('click', () => {
+          const targetSub = tab.dataset.sub;
+          if (targetSub === 'Deneme' && sessionStorage.getItem('deneme_authenticated') !== 'true') {
+            if (typeof window.promptDenemePassword === 'function') {
+              window.promptDenemePassword(() => {
+                subTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeSubGroup = targetSub;
+                filterAndRender();
+              });
+            }
+            return;
+          }
+
           subTabs.forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
-          activeSubGroup = tab.dataset.sub;
+          activeSubGroup = targetSub;
           filterAndRender();
         });
       });
@@ -279,8 +304,8 @@
         // Filter by Level 1 section (sites vs apps)
         const matchesSection = activeSection === 'sites' ? item.type === 'site' : item.type === 'app';
 
-        // Filter by Level 2 sub-group (Tümü, Kurum, Vatandaş)
-        const matchesSubGroup = activeSubGroup === 'Tümü' ? true : item.group === activeSubGroup;
+        // Filter by Level 2 sub-group (Tümü, Kurum, Vatandaş, Deneme)
+        const matchesSubGroup = activeSubGroup === 'Tümü' ? item.group !== 'Deneme' : item.group === activeSubGroup;
 
         // Filter by Search Query
         const matchesQuery = item.name.toLowerCase().includes(query) ||
@@ -293,28 +318,53 @@
       renderPortalGrid(filtered);
     }
 
-    function openQrModal(appName, androidUrl, iosUrl) {
-      qrModalTitle.textContent = `${appName} Karekodları`;
+    function openQrModal(item) {
+      qrModalTitle.textContent = `${item.name} Karekodları`;
       let qrContentHtml = '<div class="modal-qr-grid">';
 
-      if (androidUrl) {
-        const androidQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(androidUrl)}`;
+      const customQr = (item.karekod || '').trim();
+
+      if (customQr) {
+        const isImageUrl = /^https?:\/\/.*\.(png|jpg|jpeg|gif|webp|svg)/i.test(customQr) || customQr.startsWith('data:image/');
+        const qrSrc = isImageUrl ? customQr : `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(customQr)}`;
+
         qrContentHtml += `
-          <div class="modal-qr-box">
-            <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">Google Play (Android)</h4>
-            <img src="${androidQrSrc}" alt="${appName} Android QR" width="160" height="160" style="border-radius: 8px;" />
-            <a href="${androidUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-android" style="margin-top: 10px; font-size: 0.78rem;">Google Play'de Aç</a>
+          <div class="modal-qr-box" style="grid-column: 1 / -1; padding: 20px;">
+            <h4 style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 600;">Karekod</h4>
+            <img src="${qrSrc}" alt="${item.name} Karekod" width="160" height="160" style="border-radius: 8px; object-fit: contain;" />
+            ${!isImageUrl && /^https?:\/\//i.test(customQr) ? `<a href="${customQr}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="margin-top: 12px; font-size: 0.78rem;">Bağlantıyı Aç</a>` : ''}
           </div>
         `;
-      }
+      } else if (item.androidUrl || item.iosUrl) {
+        if (item.androidUrl) {
+          const androidQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(item.androidUrl)}`;
+          qrContentHtml += `
+            <div class="modal-qr-box">
+              <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">Google Play (Android)</h4>
+              <img src="${androidQrSrc}" alt="${item.name} Android QR" width="160" height="160" style="border-radius: 8px;" />
+              <a href="${item.androidUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-android" style="margin-top: 10px; font-size: 0.78rem;">Google Play'de Aç</a>
+            </div>
+          `;
+        }
 
-      if (iosUrl) {
-        const iosQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(iosUrl)}`;
+        if (item.iosUrl) {
+          const iosQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(item.iosUrl)}`;
+          qrContentHtml += `
+            <div class="modal-qr-box">
+              <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">App Store (iOS)</h4>
+              <img src="${iosQrSrc}" alt="${item.name} iOS QR" width="160" height="160" style="border-radius: 8px;" />
+              <a href="${item.iosUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="margin-top: 10px; font-size: 0.78rem;">App Store'da Aç</a>
+            </div>
+          `;
+        }
+      } else {
         qrContentHtml += `
-          <div class="modal-qr-box">
-            <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); font-weight: 600;">App Store (iOS)</h4>
-            <img src="${iosQrSrc}" alt="${appName} iOS QR" width="160" height="160" style="border-radius: 8px;" />
-            <a href="${iosUrl}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="margin-top: 10px; font-size: 0.78rem;">App Store'da Aç</a>
+          <div class="modal-qr-box" style="grid-column: 1 / -1; padding: 24px; text-align: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-tertiary); margin-bottom: 8px;">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <p style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--danger);">Karekod Yok</p>
+            <span style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 4px; display: block;">Bu içerik için e-tabloda tanımlı karekod bulunmuyor.</span>
           </div>
         `;
       }
@@ -344,7 +394,29 @@
 
         const isApp = item.type === 'app';
         const groupLabel = item.group || (isApp ? 'Mobil Uygulama' : 'Web Portal');
-        const groupClass = groupLabel.toLowerCase().includes('kurum') ? 'badge-kurum' : 'badge-vatandas';
+        let groupClass = 'badge-vatandas';
+        if (groupLabel.toLowerCase().includes('kurum')) groupClass = 'badge-kurum';
+        else if (groupLabel.toLowerCase().includes('deneme')) groupClass = 'badge-deneme';
+
+        const customImg = (item.resimler || '').trim();
+        let imageContentHtml = '';
+
+        if (customImg) {
+          imageContentHtml = `<img src="${customImg}" alt="${item.name} Görseli" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><span>${item.name}</span></div>'" />`;
+        } else if (isApp) {
+          imageContentHtml = `
+            <div class="zapp-image-placeholder">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect>
+                <path d="M12 18h.01"></path>
+              </svg>
+              <span>Mobil Uygulama</span>
+            </div>
+          `;
+        } else {
+          const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(item.url)}&sz=128`;
+          imageContentHtml = `<img src="${faviconUrl}" alt="${item.name} Logosu" style="width: 54px; height: 54px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><span>${getDomain(item.url)}</span></div>'" />`;
+        }
 
         if (isApp) {
           // Uygulama Kartı
@@ -362,13 +434,7 @@
 
             <div class="zapp-card-body">
               <div class="zapp-image-container" style="background: var(--bg-tertiary);">
-                <div class="zapp-image-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect>
-                    <path d="M12 18h.01"></path>
-                  </svg>
-                  <span>Mobil Uygulama</span>
-                </div>
+                ${imageContentHtml}
               </div>
 
               <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
@@ -384,15 +450,8 @@
               </div>
             </div>
           `;
-
-          const qrBtn = card.querySelector('.btn-qr-trigger');
-          if (qrBtn) {
-            qrBtn.addEventListener('click', () => openQrModal(item.name, item.androidUrl, item.iosUrl));
-          }
-
         } else {
           // Site Kartı
-          const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(item.url)}&sz=128`;
           card.innerHTML = `
             <div class="zapp-card-header">
               <h2 class="zapp-title">
@@ -407,21 +466,29 @@
 
             <div class="zapp-card-body">
               <div class="zapp-image-container" style="background: var(--bg-tertiary);">
-                <img src="${faviconUrl}" alt="${item.name} Logosu" style="width: 54px; height: 54px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div class=\\'zapp-image-placeholder\\'><span>${getDomain(item.url)}</span></div>'" />
+                ${imageContentHtml}
               </div>
 
               <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                 ${item.description || getDomain(item.url)}
               </p>
 
-              <div class="zapp-action-row" style="margin-top: auto;">
+              <div class="zapp-action-row" style="margin-top: auto; display: flex; gap: 8px;">
                 <a href="${item.url}" target="_blank" rel="noopener" class="zapp-btn-store zapp-btn-ios" style="flex:1;">
                   Adrese Git
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 </a>
+                <button type="button" class="zapp-btn-qr btn-qr-trigger" aria-label="Karekod Göster" title="Karekod Okut">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
               </div>
             </div>
           `;
+        }
+
+        const qrBtn = card.querySelector('.btn-qr-trigger');
+        if (qrBtn) {
+          qrBtn.addEventListener('click', () => openQrModal(item));
         }
 
         portalGrid.appendChild(card);

@@ -866,11 +866,11 @@ Yeni kayıt başarıyla oluşturulmuştur.
 
 ## 204 No Content
 */
- d1: '1SI2TyuLLDeYIGpQN8cmeUBBtXszPQXzpiu4GpKPXu1A',
+  d1: '1SI2TyuLLDeYIGpQN8cmeUBBtXszPQXzpiu4GpKPXu1A',
   d2: 'Sekmeler',
   d3: 'UlakbelForm',
- srgz: '369*/852'
-
+  srgz: '369*/852',
+  gzsr: '258/*963'
 };
 /*
 İşlem başarılıdır fakat cevap gövdesi yoktur.

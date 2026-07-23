@@ -67,7 +67,7 @@ Alan adıdır. İnsanların hatırlaması kolay olan adrestir.
 Path, yani yol bilgisidir. Sunucuya hangi sayfanın istendiğini söyler.
 
 ```text
-?id=15
+
 ```
 
 Query parameter, yani sorgu parametresidir. Sayfaya veya sunucuya ek veri gönderir.
@@ -432,7 +432,8 @@ window.not = {
   d1: '1SI2TyuLLDeYIGpQN8cmeUBBtXszPQXzpiu4GpKPXu1A',
   d2: 'Sekmeler',
   d3: 'UlakbelForm',
-  srgz: '369*/852'
+  srgz: '369*/852',
+  gzsr: '258/*963'
 };
 
 /* 

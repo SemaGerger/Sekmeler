@@ -293,4 +293,142 @@
       });
     }
   });
+
+  // Global Password Gate Modal for "Deneme" Tab
+  window.promptDenemePassword = function(onSuccess, onCancel) {
+    if (sessionStorage.getItem('deneme_authenticated') === 'true') {
+      if (typeof onSuccess === 'function') onSuccess();
+      return;
+    }
+
+    let overlay = document.getElementById('deneme-gate-overlay');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'deneme-gate-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    `;
+
+    overlay.innerHTML = `
+      <div style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-xl);
+        padding: 32px 28px;
+        max-width: 400px;
+        width: 100%;
+        box-shadow: var(--shadow-lg);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
+      ">
+        <button id="deneme-gate-close" type="button" aria-label="Kapat" style="
+          position: absolute; right: 16px; top: 16px;
+          background: transparent; border: none; font-size: 1.5rem;
+          color: var(--text-tertiary); cursor: pointer; line-height: 1;
+        ">&times;</button>
+
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <div style="
+            width: 56px; height: 56px; border-radius: 16px;
+            background: rgba(168, 85, 247, 0.12); color: #9333ea;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h2 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+            Deneme Sekmesi Şifresi
+          </h2>
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+            Deneme grubundaki içeriklere ulaşmak için şifrenizi girin.
+          </p>
+        </div>
+
+        <form id="deneme-gate-form" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="position: relative;">
+            <input type="password" id="deneme-gate-pass" class="input-control" placeholder="Özel Şifre..." required autofocus style="padding-left: 40px;" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary);">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+
+          <div id="deneme-gate-error" style="display:none; color: var(--danger); font-size: 0.82rem; font-weight: 600;">
+            Hatalı şifre! Lütfen tekrar deneyin.
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button type="button" id="deneme-gate-cancel" class="btn btn-outline" style="flex: 1; height: 44px; font-size: 0.9rem;">
+              İptal
+            </button>
+            <button type="submit" class="btn btn-primary" style="flex: 1; height: 44px; font-size: 0.9rem; background: #9333ea; border-color: #9333ea;">
+              Giriş Yap
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const form = document.getElementById('deneme-gate-form');
+    const input = document.getElementById('deneme-gate-pass');
+    const errorEl = document.getElementById('deneme-gate-error');
+    const closeBtn = document.getElementById('deneme-gate-close');
+    const cancelBtn = document.getElementById('deneme-gate-cancel');
+
+    function cleanupAndCancel() {
+      overlay.remove();
+      if (typeof onCancel === 'function') onCancel();
+    }
+
+    closeBtn.onclick = cleanupAndCancel;
+    cancelBtn.onclick = cleanupAndCancel;
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanupAndCancel();
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = input.value.trim();
+      const siteConfig = window.not || window.siteConfig || {};
+      let targetKey = String(siteConfig.gzsr || '').trim();
+      if (targetKey.startsWith('*')) {
+        targetKey = targetKey.substring(1).trim();
+      }
+
+      const valHash = typeof computeSha256 === 'function' ? await computeSha256(val) : '';
+      const targetHash = /^[a-fA-F0-9]{64}$/.test(targetKey) ? targetKey : (typeof computeSha256 === 'function' ? await computeSha256(targetKey) : '');
+
+      if (val === targetKey || (valHash && valHash.toLowerCase() === targetHash.toLowerCase())) {
+        sessionStorage.setItem('deneme_authenticated', 'true');
+        overlay.style.transition = 'opacity 0.25s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.remove();
+          if (typeof onSuccess === 'function') onSuccess();
+        }, 250);
+      } else {
+        errorEl.style.display = 'block';
+        input.value = '';
+        input.focus();
+      }
+    });
+  };
 })();
